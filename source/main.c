@@ -5,5 +5,6 @@
 #include "filestuff.h"
 
 int main() {
-	return 0;  // deadass
+    copyDir("3ds", "3ds-copy"); // test it out
+	return 0;
 }

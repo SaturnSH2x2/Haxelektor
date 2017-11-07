@@ -58,9 +58,9 @@ int copyFile(const char* src, const char* dst) {
     FILE* s = fopen(src, "rb");
     FILE* d = fopen(dst, "wb+");
     if (s == NULL || d == NULL) {
-		printf("source: %s, dest: %s\n", src, dst);
+        printf("source: %s, dest: %s\n", src, dst);
         return -1;
-	}
+    }
     
     while ((buf = fgetc(s)) != EOF) {
         fputc(buf, d);
@@ -73,50 +73,51 @@ int copyFile(const char* src, const char* dst) {
 }
 
 int copyDir(const char* src, const char* dst) {
-	// first off, does it exist and is it a directory?
-	DIR* curdir = opendir(src);
-	if (curdir == NULL)
-		return -1;
+    // first off, does it exist and is it a directory?
+    DIR* curdir = opendir(src);
+    if (curdir == NULL)
+        return -1;
 
-	// check to see that the destination directory exists,
-	// if it doesn't, create it
-	DIR* dstdir = opendir(dst);
-	if (dstdir == NULL) {
-		// https://stackoverflow.com/a/675051
-		int result = mkdir(dst, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-		if (result == -1) {
-			fprintf(stderr, "error: could not create %s\n", dst);
-			return -1;
-		}
-	} else {
-		closedir(dstdir);
-	}
+    // check to see that the destination directory exists,
+    // if it doesn't, create it
+    DIR* dstdir = opendir(dst);
+    if (dstdir == NULL) {
+        // https://stackoverflow.com/a/675051
+        int result = mkdir(dst, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        if (result == -1) {
+            fprintf(stderr, "error: could not create %s\n", dst);
+            return -1;
+        }
+    } else {
+        closedir(dstdir);
+    }
 
-	struct dirent* entry;
-	char* srcSubPath = malloc(MAXDIRSIZE * sizeof(char*));
-	char* dstSubPath = malloc(MAXDIRSIZE * sizeof(char*));
+    struct dirent* entry;
+    char* srcSubPath = malloc(MAXDIRSIZE);
+    char* dstSubPath = malloc(MAXDIRSIZE);
 
-	while ( (entry = readdir(curdir)) != NULL ) {
-		// copy the names
-		snprintf(srcSubPath, MAXDIRSIZE, "%s/%s", src, entry->d_name);
-		snprintf(dstSubPath, MAXDIRSIZE, "%s/%s", dst, entry->d_name);
+    while ( (entry = readdir(curdir)) != NULL ) {
+        // copy the names
+        // while, yes, there is a possiblility that this can get truncated 
+        snprintf(srcSubPath, MAXDIRSIZE, "%s/%s", src, entry->d_name);
+        snprintf(dstSubPath, MAXDIRSIZE, "%s/%s", dst, entry->d_name);
 
-		if ( strncmp(entry->d_name, ".", sizeof(entry->d_name)) == 0 || \
-			 strncmp(entry->d_name, "..", sizeof(entry->d_name)) == 0 ) {
-			continue;
-		}
+        if ( strncmp(entry->d_name, ".", sizeof(entry->d_name)) == 0 || \
+             strncmp(entry->d_name, "..", sizeof(entry->d_name)) == 0 ) {
+            continue;
+        }
 
-		// yay, recursion, end me
-		if (copyDir(srcSubPath, dstSubPath) == -1) {  // it's a file, we need to copy it as such
-			if (copyFile(srcSubPath, dstSubPath) == -1) {
-				fprintf(stderr, "error: could not copy %s\n", entry->d_name);
-				return -1;
-			}
-		}
-	}
+        // yay, recursion, end me
+        if (copyDir(srcSubPath, dstSubPath) == -1) {  // it's a file, we need to copy it as such
+            if (copyFile(srcSubPath, dstSubPath) == -1) {
+                fprintf(stderr, "error: could not copy %s\n", entry->d_name);
+                return -1;
+            }
+        }
+    }
 
-	free(srcSubPath);
-	free(dstSubPath);
+    free(srcSubPath);
+    free(dstSubPath);
 
-	return 0;
+    return 0;
 }
