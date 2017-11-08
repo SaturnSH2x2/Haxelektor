@@ -49,10 +49,10 @@ void createButton(UIButton* but, int x, int y, int width, int height, int textIn
 }
 
 void drawButton(UIButton* but) {
-    int textWidth = pp2d_get_text_width(but->text, 0.3f, 0.3f);
+    int textWidth = pp2d_get_text_width(but->text, 0.5f, 0.5f);
     
     pp2d_draw_rectangle(but->x, but->y, but->width, but->height, GREYFG);
-    pp2d_draw_text(but->x + but->width / 2 - textWidth / 2, but->y, 0.3f, 0.3f, WHITE, but->text);
+    pp2d_draw_text(but->x + (but->width / 2) - (textWidth / 2), but->y + (but->height / 3), 0.5f, 0.5f, WHITE, but->text);
 }
 
 void uiInit() {
@@ -60,8 +60,14 @@ void uiInit() {
     buttonList = malloc(NUMBTNS * sizeof(*buttonList));
     for (int i = 0; i < NUMBTNS; i++) {
         buttonList[i] = malloc(sizeof(UIButton*));
-        createButton(buttonList[i], 220, 20 + (i * 25), 80, 20, i);
+        createButton(buttonList[i], 220, 20 + (i * 40), 90, 27, i);
     }
+    
+    // Nothing like HARDCODING SHIT IN WHEN IT WON'T WORK FOR SOME STUPID-ASS FUCKING REASON OTHERWISE
+    buttonList[0]->height = 35;
+    buttonList[1]->height = 35;
+    buttonList[2]->height = 35;
+    buttonList[3]->height = 35;
 }
 
 LOOP_RETURN uiModSelectLoop() {
@@ -80,6 +86,11 @@ LOOP_RETURN uiModSelectLoop() {
 
         // display to screen
         pp2d_begin_draw(GFX_BOTTOM);
+            // draw side and bottom bar
+            pp2d_draw_rectangle(210, 0, 120, 240, GREY2FG);
+            pp2d_draw_rectangle(0, 220, 320, 220 ,DGREY);
+        
+            // draw all the side buttons
             for (int i = 0; i < NUMBTNS; i++) {
                 drawButton(buttonList[i]);
             }
