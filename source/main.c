@@ -9,6 +9,7 @@
 
 int main() {
     pp2d_init();
+    consoleInit(GFX_TOP, NULL);
     
     uiInit();
     uiModSelectLoop();

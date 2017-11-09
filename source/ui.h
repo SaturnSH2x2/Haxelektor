@@ -22,6 +22,13 @@ typedef struct {
 } GameMod;
 
 typedef struct {
+    char** modListing;
+    int modCount;
+    int** imageList;
+    int** modSelected;
+} GameModList;
+
+typedef struct {
     int side;
     int index;
 } UICursor;
