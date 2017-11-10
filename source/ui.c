@@ -205,6 +205,9 @@ LOOP_RETURN uiModSelectLoop() {
                 case KEY_RIGHT:
                     cursorPos = !cursorPos;
                     break;
+                case KEY_A:
+                    modSelected[entryIndex] = !modSelected[entryIndex];
+                    break;
                 default:
                     break;
             };
@@ -282,10 +285,16 @@ LOOP_RETURN uiModSelectLoop() {
                     break;
             };
             
+            s16 prevEntryIndex = entryIndex;
             for (int i = 0; i < 13; i++) {
                 if ((0 <= touch.px && touch.px <= 200) && \
                    (20 + ((i % 13) * 15) <= touch.py && touch.py <= 20 + ((i % 13) * 15) + 15)) {
                        entryIndex = indexPos + i;
+                       if (entryIndex == prevEntryIndex)
+                           modSelected[indexPos + i] = !modSelected[indexPos + i];
+                       
+                        if (cursorPos != 0)
+                            cursorPos = !cursorPos;
                        break;
                    }
             }
@@ -302,7 +311,8 @@ LOOP_RETURN uiModSelectLoop() {
                 if (i == entryIndex && cursorPos == 0)
                     pp2d_draw_rectangle(0, 20 + ((i % 13) * 15), 320, 15, GREYFG);
                 pp2d_draw_text(0, 20 + ((i % 13) * 15), 0.5f, 0.5f, WHITE, modListing[i]);
-                pp2d_draw_text(50, 20 + ((i % 13) * 15), 0.5f, 0.5f, WHITE, "aaaabbbb");
+                if (modSelected[i] != 0) 
+                    pp2d_draw_text(150, 20 + ((i % 13) * 15), 0.5f, 0.5f, WHITE, "Selected");
             }
         
             // draw side and bottom bar
