@@ -153,7 +153,7 @@ void uiInit() {
     buttonList[7]->y = buttonList[6]->y;
     
     // create and fill mod list
-    modListing = listAllFiles("/3ds/data/Haxelektor/test/", &modCount);
+    modListing = listAllFiles("/3ds/data/Haxelektor/test/", &modCount, 1);
     
     imageList = malloc(modCount * sizeof(u16*));
     modSelected = malloc(modCount * sizeof(u8*));

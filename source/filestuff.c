@@ -10,8 +10,30 @@
 
 #define MAXDIRSIZE 255
 
+// TODO: add code.bin/code.ips support
+bool isAMod(const char* path) {
+    DIR* moddir = opendir(path);
+    struct dirent* entry;
+    
+    DIR* contentFolder;
+    char* subpath = malloc(MAXDIRSIZE * sizeof(char*));
+    
+    while ((entry = readdir(moddir)) != NULL) {
+        memset(subpath, 0, sizeof(subpath));
+        snprintf(subpath, MAXDIRSIZE, "%s/%s", path, entry->d_name);
+        if ((contentFolder = opendir(subpath)) != NULL) { 
+            closedir(contentFolder);
+            if (strncmp(entry->d_name, "mod", sizeof(entry->d_name)) == 0)
+                return true;
+        }
+    }
+    
+    free(subpath);
+    closedir(moddir);
+    return false;
+}
 
-char** listAllFiles(const char* path, int* entryC) {
+char** listAllFiles(const char* path, int* entryC, int listOnlyMods) {
     char** entries;
     int arrSize = 2;
     int arrIndex = 0;
@@ -26,7 +48,16 @@ char** listAllFiles(const char* path, int* entryC) {
     if ( d == NULL )
         return NULL;
     
+    char* subpath = malloc(MAXDIRSIZE * sizeof(subpath));
+    
     while ( (dEnt = readdir(d)) != NULL ) {
+        if (listOnlyMods) {
+            memset(subpath, 0, sizeof(subpath));
+            snprintf(subpath, MAXDIRSIZE, "%s/%s", path, dEnt->d_name);
+            if (!isAMod(subpath))
+                continue;
+        }
+        
         entries[arrIndex] = malloc(MAXDIRSIZE * sizeof(char*));
         snprintf(entries[arrIndex], MAXDIRSIZE, dEnt->d_name);
         
@@ -44,6 +75,7 @@ char** listAllFiles(const char* path, int* entryC) {
     if (arrIndex == 0)
         return NULL;
     
+    free(subpath);
     closedir(d);
     arrSize--;
     
