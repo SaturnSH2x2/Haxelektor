@@ -13,7 +13,7 @@
 #define DGREY   RGBA8( 50,  50,  50, 255)
 
 #define MAXSIZE 255
-#define NUMBTNS 5
+#define NUMBTNS 8
 
 // ------------------------------------------------------
 // UI Mod Select Variables
@@ -34,6 +34,7 @@ u8* modSelected;
 
 s16 entryIndex = 0;  // position of index in array
 u16 indexPos = 0;    // position of screen in array
+u8 cursorPos = 0;    // is the cursor in the file browser or the button list?
 
 // END
 // ------------------------------------------------------
@@ -67,13 +68,22 @@ void createButton(UIButton* but, int x, int y, int width, int height, int textIn
             snprintf(but->text, MAXSIZE, "Apply Patches");
             break;
         case 2:
-            snprintf(but->text, MAXSIZE, "Save Config");
+            snprintf(but->text, MAXSIZE, "Remove Patches");
             break;
         case 3:
-            snprintf(but->text, MAXSIZE, "Load Config");
+            snprintf(but->text, MAXSIZE, "Save Config");
             break;
         case 4:
+            snprintf(but->text, MAXSIZE, "Load Config");
+            break;
+        case 5:
             snprintf(but->text, MAXSIZE, "Go Back");
+            break;
+        case 6:
+            snprintf(but->text, MAXSIZE, "<<");
+            break;
+        case 7:
+            snprintf(but->text, MAXSIZE, ">>");
             break;
         default:
             snprintf(but->text, MAXSIZE, "whoops, that wasn't supposed to happen");
@@ -82,10 +92,24 @@ void createButton(UIButton* but, int x, int y, int width, int height, int textIn
 }
 
 void drawButton(UIButton* but) {
-    int textWidth = pp2d_get_text_width(but->text, 0.5f, 0.5f);
+    int textWidth = pp2d_get_text_width(but->text, 0.4f, 0.4f);
     
     pp2d_draw_rectangle(but->x, but->y, but->width, but->height, GREYFG);
-    pp2d_draw_text(but->x + (but->width / 2) - (textWidth / 2), but->y + (but->height / 3), 0.5f, 0.5f, WHITE, but->text);
+    pp2d_draw_text(but->x + (but->width / 2) - (textWidth / 2), but->y + (but->height / 3), 0.4f, 0.4f, WHITE, but->text);
+}
+
+bool isButtonTouched(UIButton* b, touchPosition* t) {
+    return (b->x <= t->px && t->px <= b->x + b->width) && \
+           (b->y <= t->py && t->py <= b->y + b->height);
+}
+
+s16 getCurrentButtonTouched(touchPosition* t) {
+    for (int i = 0; i < NUMBTNS; i++) {
+        if (isButtonTouched(buttonList[i], t)) 
+            return i;
+    }
+        
+    return -1;
 }
 
 void createModEntry(GameMod* mod, char* name, char* description, int imgID) {
@@ -101,15 +125,24 @@ void uiInit() {
     buttonList = malloc(NUMBTNS * sizeof(*buttonList));
     for (int i = 0; i < NUMBTNS; i++) {
         buttonList[i] = malloc(sizeof(UIButton*));
-        createButton(buttonList[i], 220, 10 + (i * 35), 95, 27, i);
+        createButton(buttonList[i], 220, 10 + (i * 30), 95, 27, i);
     }
     
     // Nothing like HARDCODING SHIT IN WHEN IT WON'T WORK FOR SOME STUPID-ASS FUCKING REASON OTHERWISE
-    buttonList[0]->height = 30;
-    buttonList[1]->height = 30;
-    buttonList[2]->height = 30;
-    buttonList[3]->height = 30;
-    buttonList[4]->height = 30;
+    buttonList[0]->height = 25;
+    buttonList[1]->height = 25;
+    buttonList[2]->height = 25;
+    buttonList[3]->height = 25;
+    buttonList[4]->height = 25;
+    buttonList[5]->height = 25;
+    
+    buttonList[6]->width = 45;
+    buttonList[6]->height = 25;
+    buttonList[7]->width = 45;
+    buttonList[7]->height = 25;
+    
+    buttonList[7]->x = 270;
+    buttonList[7]->y = buttonList[6]->y;
     
     // create and fill mod list
     modListing = listAllFiles("/3ds/data/Haxelektor/test/", &modCount);
@@ -141,10 +174,14 @@ LOOP_RETURN uiModSelectLoop() {
         hidScanInput();
         u32 kDown = hidKeysDown();
         
+        touchPosition touch;
+        hidTouchRead(&touch);
+        
         // react according to input
         if (kDown & KEY_START)
             break;
         
+        // button input
         switch (kDown) {
             case KEY_UP:
                 entryIndex--;
@@ -153,20 +190,41 @@ LOOP_RETURN uiModSelectLoop() {
                 entryIndex++;
                 add = 1;
                 break;
-            case KEY_RIGHT:
-                entryIndex = entryIndex + 13;
-                if ((entryIndex >= modCount) && indexPos != ((int)ceil((float)modCount / 13.0) - 1) * 13) {
-                    entryIndex = modCount - 1;
-                }
-                indexPos = indexPos + 13;
-                break;
-            case KEY_LEFT:
-                entryIndex = entryIndex - 13;
-                indexPos = indexPos - 13;
-                break;
             default:
                 break;
         };
+        
+        // touch input
+        s16 buttonTouched = getCurrentButtonTouched(&touch);
+        if (buttonTouched != -1)
+            printf("button touched: %d\n", buttonTouched);
+        
+        if (kDown & KEY_TOUCH) {
+            switch (buttonTouched) {
+                // mixed these up, lol
+                case 7:
+                    entryIndex = entryIndex + 13;
+                    if ((entryIndex >= modCount) && indexPos != ((int)ceil((float)modCount / 13.0) - 1) * 13) {
+                        entryIndex = modCount - 1;
+                    }
+                    indexPos = indexPos + 13;
+                    break;
+                case 6:
+                    entryIndex = entryIndex - 13;
+                    indexPos = indexPos - 13;
+                    break;
+                default:
+                    break;
+            };
+            
+            for (int i = 0; i < 13; i++) {
+                if ((0 <= touch.px && touch.px <= 200) && \
+                   (20 + ((i % 13) * 15) <= touch.py && touch.py <= 20 + ((i % 13) * 15) + 15)) {
+                       entryIndex = indexPos + i;
+                       break;
+                   }
+            }
+        }        
         
         if (entryIndex >= modCount) {
             entryIndex = 0;
@@ -182,8 +240,6 @@ LOOP_RETURN uiModSelectLoop() {
             else if ((entryIndex % 13) == 0 && entryIndex != 0 && add == 1)
                 indexPos = indexPos + 13;
         }
-
-        printf("%d\n", indexPos);
         
         // display to screen
         pp2d_begin_draw(GFX_BOTTOM);
