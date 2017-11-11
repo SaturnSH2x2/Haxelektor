@@ -8,7 +8,7 @@
 
 #include "filestuff.h"
 
-#define MAXDIRSIZE 255
+#define MAXDIRSIZE 500
 
 // TODO: add code.bin/code.ips support
 bool isAMod(const char* path) {
@@ -19,7 +19,7 @@ bool isAMod(const char* path) {
     char* subpath = malloc(MAXDIRSIZE * sizeof(char*));
     
     while ((entry = readdir(moddir)) != NULL) {
-        memset(subpath, 0, sizeof(subpath));
+        memset(subpath, 0, MAXDIRSIZE * sizeof(char*));
         snprintf(subpath, MAXDIRSIZE, "%s/%s", path, entry->d_name);
         if ((contentFolder = opendir(subpath)) != NULL) { 
             closedir(contentFolder);
@@ -33,7 +33,7 @@ bool isAMod(const char* path) {
     return false;
 }
 
-char** listAllFiles(const char* path, int* entryC, int listOnlyMods) {
+char** listAllFiles(const char* path, u16* entryC, int listOnlyMods) {
     char** entries;
     int arrSize = 2;
     int arrIndex = 0;
@@ -52,7 +52,7 @@ char** listAllFiles(const char* path, int* entryC, int listOnlyMods) {
     
     while ( (dEnt = readdir(d)) != NULL ) {
         if (listOnlyMods) {
-            memset(subpath, 0, sizeof(subpath));
+            memset(subpath, 0, MAXDIRSIZE * sizeof(subpath));
             snprintf(subpath, MAXDIRSIZE, "%s/%s", path, dEnt->d_name);
             if (!isAMod(subpath))
                 continue;

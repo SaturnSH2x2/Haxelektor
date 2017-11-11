@@ -29,8 +29,7 @@ UIButton** buttonList;
 
 // required for listing files in mod select
 char** modListing;
-int modCount;
-u16* imageList;
+u16 modCount;
 u8* modSelected;
 
 s16 entryIndex = 0;  // position of index in array
@@ -53,6 +52,22 @@ void stall() {
         gfxFlushBuffers();
         gfxSwapBuffers();
     }
+}
+
+void loadFromFile(char* desc) {
+    char* path = malloc(MAXSIZE * sizeof(char*));
+    
+    snprintf(path, MAXSIZE, "/3ds/data/Haxelektor/test/%s/description.txt", modListing[entryIndex]);
+    FILE* fp = fopen(path, "r");
+    if (fp == NULL) {
+        snprintf(desc, MAXSIZE, "No description provided.");
+        return;
+    }
+    
+    fgets(desc, MAXSIZE, fp);
+    fclose(fp);
+    
+    free(path);
 }
     
 void createButton(UIButton* but, int x, int y, int width, int height, int textIndex) {
@@ -154,14 +169,18 @@ void uiInit() {
     
     // create and fill mod list
     modListing = listAllFiles("/3ds/data/Haxelektor/test/", &modCount, 1);
-    
-    imageList = malloc(modCount * sizeof(u16*));
     modSelected = malloc(modCount * sizeof(u8*));
     
+    char* path = malloc(MAXSIZE * sizeof(char*));
     for (int i = 0; i < modCount; i++) {
         modSelected[i] = 0;
-        imageList[i] = 0;
+        
+        memset(path, 0, MAXSIZE * sizeof(char*));
+        snprintf(path, MAXSIZE, "3ds/data/Haxelektor/test/%s/image.png", modListing[i]);
+        pp2d_load_texture_png(i, path);
     }
+    
+    free(path);
 }
 
 LOOP_RETURN uiModSelectLoop() {
@@ -169,11 +188,13 @@ LOOP_RETURN uiModSelectLoop() {
     pp2d_set_screen_color(GFX_BOTTOM, LGREYBG);
     
     // debug shit
-    consoleInit(GFX_TOP, NULL);
+    //consoleInit(GFX_TOP, NULL);
     
-    for (int i = 0; i < modCount; i++)
-        printf("%s\n", modListing[i]);
-    stall();
+    char desc[255];
+    loadFromFile(desc);
+    
+    //printf("%s\n", desc);
+    //stall();
 
     while (aptMainLoop()) {
         int add = 0;
@@ -194,9 +215,11 @@ LOOP_RETURN uiModSelectLoop() {
             switch (kDown) {
                 case KEY_UP:
                     entryIndex--;
+                    loadFromFile(desc);
                     break;
                 case KEY_DOWN:
                     entryIndex++;
+                    loadFromFile(desc);
                     add = 1;
                     break;
                 case KEY_LEFT:
@@ -215,15 +238,20 @@ LOOP_RETURN uiModSelectLoop() {
             if (entryIndex >= modCount) {
                 entryIndex = 0;
                 indexPos = 0;
+                loadFromFile(desc);
             } else if (entryIndex < 0) {
                 entryIndex = modCount - 1;
                 indexPos = ((int)ceil((float)modCount / 13.0) - 1) * 13;
+                loadFromFile(desc);
             }
         
-            if (entryIndex < indexPos)
+            if (entryIndex < indexPos) {
                 indexPos = indexPos - 13;
-            else if ((entryIndex % 13) == 0 && entryIndex != 0 && add == 1)
+                loadFromFile(desc);
+            } else if ((entryIndex % 13) == 0 && entryIndex != 0 && add == 1) {
                 indexPos = indexPos + 13;
+                loadFromFile(desc);
+            }
         } else if (cursorPos == 1) {
             switch (kDown) {
                 case KEY_UP:
@@ -276,10 +304,12 @@ LOOP_RETURN uiModSelectLoop() {
                         entryIndex = modCount - 1;
                     }
                     indexPos = indexPos + 13;
+                    loadFromFile(desc);
                     break;
                 case 6:
                     entryIndex = entryIndex - 13;
                     indexPos = indexPos - 13;
+                    loadFromFile(desc);
                     break;
                 default:
                     break;
@@ -292,10 +322,13 @@ LOOP_RETURN uiModSelectLoop() {
                        entryIndex = indexPos + i;
                        if (entryIndex == prevEntryIndex)
                            modSelected[indexPos + i] = !modSelected[indexPos + i];
-                       
+                        else
+                            loadFromFile(desc);
+                        
+                        
                         if (cursorPos != 0)
                             cursorPos = !cursorPos;
-                       break;
+                        break;
                    }
             }
         }        
@@ -303,6 +336,12 @@ LOOP_RETURN uiModSelectLoop() {
 
         
         // display to screen
+        pp2d_begin_draw(GFX_TOP);
+            pp2d_draw_texture(entryIndex, 0, 0);
+            pp2d_draw_rectangle(0, 220, 400, 20, GREYFG);
+            pp2d_draw_text(0, 223, 0.5f, 0.5f, WHITE, desc);
+        pp2d_end_draw(); 
+        
         pp2d_begin_draw(GFX_BOTTOM);
             // draw mod entries
             int max = (indexPos + 13 < modCount) ? indexPos + 13 : modCount;
@@ -333,6 +372,5 @@ LOOP_RETURN uiModSelectLoop() {
 void uiExit() {
     free(modListing);  
     free(buttonList);
-    free(imageList);
     free(modSelected);
 }
