@@ -304,12 +304,14 @@ LOOP_RETURN uiModSelectLoop() {
                         entryIndex = modCount - 1;
                     }
                     indexPos = indexPos + 13;
-                    loadFromFile(desc);
+                    if (entryIndex < modCount)
+                        loadFromFile(desc);
                     break;
                 case 6:
                     entryIndex = entryIndex - 13;
                     indexPos = indexPos - 13;
-                    loadFromFile(desc);
+                    if (entryIndex > 0)
+                        loadFromFile(desc);
                     break;
                 default:
                     break;
