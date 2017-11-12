@@ -87,6 +87,8 @@ typedef struct {
 	float texcoord[2]; 
 } textVertex_s;
 
+void pp2d_swap_textures(size_t id1, size_t id2);
+
 /**
  * @brief Starts a new frame on the specified screen
  * @param target GFX_TOP or GFX_BOTTOM
@@ -381,7 +383,7 @@ void pp2d_load_texture_memory(size_t id, void* buf, u32 width, u32 height);
  * @param id of the texture 
  * @param path where the png file is located 
  */
-void pp2d_load_texture_png(size_t id, const char* path);
+unsigned pp2d_load_texture_png(size_t id, const char* path);
 
 /**
  * @brief Loads a texture from a buffer in memory

@@ -9,12 +9,14 @@
 
 int main() {
     pp2d_init();
+    romfsInit();
     //consoleInit(GFX_TOP, NULL);
     
     uiInit();
     uiModSelectLoop();
     
     uiExit();
+    romfsExit();
     pp2d_exit();
 	return 0;
 }

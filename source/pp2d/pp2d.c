@@ -28,12 +28,20 @@ static struct {
 	bool initialized;
 } textureData;
 
+typedef struct {
+	C3D_Tex tex;
+	u32 width;
+	u32 height;
+	bool allocated;
+} Tex;
+
 static struct {
 	C3D_Tex tex;
 	u32 width;
 	u32 height;
 	bool allocated;
 } textures[MAX_TEXTURES];
+
 
 static struct {
 	size_t id;
@@ -55,6 +63,20 @@ static void pp2d_add_text_vertex(float vx, float vy, float vz, float tx, float t
 	vtx->position[2] = vz;
 	vtx->texcoord[0] = tx;
 	vtx->texcoord[1] = ty;
+}
+
+void pp2d_swap_textures(size_t id1, size_t id2) {
+    C3D_Tex texTemp = textures[id1].tex;
+    u32 tempWidth = textures[id1].width;
+    u32 tempHeight = textures[id1].height;
+    bool tempAlloc = textures[id1].allocated;
+        
+    textures[id1] = textures[id2];
+    
+    textures[id2].tex = texTemp;
+    textures[id2].width = tempWidth;
+    textures[id2].height = tempHeight;
+    textures[id2].allocated = tempAlloc;
 }
 
 void pp2d_begin_draw(gfxScreen_t target)
@@ -538,16 +560,19 @@ void pp2d_load_texture_memory(size_t id, void* buf, u32 width, u32 height)
 	C3D_TexFlush(&textures[id].tex);	
 }
 
-void pp2d_load_texture_png(size_t id, const char* path)
+unsigned pp2d_load_texture_png(size_t id, const char* path)
 {
 	if (id >= MAX_TEXTURES)
-		return;
+		return 1;   // idk
 	
 	u8* image;
 	unsigned width;
 	unsigned height;
 
-	lodepng_decode32_file(&image, &width, &height, path);
+	unsigned result = lodepng_decode32_file(&image, &width, &height, path);
+    if (result) {
+        return result;
+    }
 
 	for (u32 i = 0; i < width; i++) 
 	{
@@ -569,6 +594,8 @@ void pp2d_load_texture_png(size_t id, const char* path)
 	
 	pp2d_load_texture_memory(id, image, width, height);
 	free(image);
+    
+    return 0;
 }
 
 void pp2d_load_texture_png_memory(size_t id, void* buf, size_t buf_size)

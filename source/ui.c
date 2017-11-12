@@ -14,7 +14,7 @@
 #define DGREY   RGBA8( 50,  50,  50, 255)
 
 #define MAXSIZE 255
-#define NUMBTNS 8
+#define NUMBTNS 10
 
 // ------------------------------------------------------
 // UI Mod Select Variables
@@ -69,6 +69,23 @@ void loadFromFile(char* desc) {
     
     free(path);
 }
+
+// this is important, because mod priority and shit
+void swapEntries(int index1, int index2) {
+    char* listTemp;
+    u8 selectTemp;
+    
+    listTemp = modListing[index1];
+    selectTemp = modSelected[index1];
+    
+    modListing[index1] = modListing[index2];
+    modSelected[index1] = modSelected[index2];
+    
+    modListing[index2] = (char*)listTemp;
+    modSelected[index2] = selectTemp;
+    
+    pp2d_swap_textures(index1, index2);
+}
     
 void createButton(UIButton* but, int x, int y, int width, int height, int textIndex) {
     but->x = x;
@@ -94,13 +111,19 @@ void createButton(UIButton* but, int x, int y, int width, int height, int textIn
             snprintf(but->text, MAXSIZE, "Load Config");
             break;
         case 5:
-            snprintf(but->text, MAXSIZE, "Go Back");
+            snprintf(but->text, MAXSIZE, "Prio Up");
             break;
         case 6:
             snprintf(but->text, MAXSIZE, "<<");
             break;
         case 7:
             snprintf(but->text, MAXSIZE, ">>");
+            break;
+        case 8:
+            snprintf(but->text, MAXSIZE, "Prio Down");
+            break;
+        case 9:
+            snprintf(but->text, MAXSIZE, "Go Back");
             break;
         default:
             snprintf(but->text, MAXSIZE, "whoops, that wasn't supposed to happen");
@@ -148,24 +171,29 @@ void uiInit() {
     buttonList = malloc(NUMBTNS * sizeof(*buttonList));
     for (int i = 0; i < NUMBTNS; i++) {
         buttonList[i] = malloc(sizeof(UIButton*));
-        createButton(buttonList[i], 220, 10 + (i * 30), 95, 27, i);
+        createButton(buttonList[i], 220, 10 + (i * 25), 95, 27, i);
     }
     
     // Nothing like HARDCODING SHIT IN WHEN IT WON'T WORK FOR SOME STUPID-ASS FUCKING REASON OTHERWISE
-    buttonList[0]->height = 25;
-    buttonList[1]->height = 25;
-    buttonList[2]->height = 25;
-    buttonList[3]->height = 25;
-    buttonList[4]->height = 25;
-    buttonList[5]->height = 25;
+    buttonList[0]->height = 20;
+    buttonList[1]->height = 20;
+    buttonList[2]->height = 20;
+    buttonList[3]->height = 20;
+    buttonList[4]->height = 20;
+    buttonList[5]->height = 20;
     
     buttonList[6]->width = 45;
-    buttonList[6]->height = 25;
+    buttonList[6]->height = 20;
     buttonList[7]->width = 45;
-    buttonList[7]->height = 25;
+    buttonList[7]->height = 20;
     
     buttonList[7]->x = 270;
     buttonList[7]->y = buttonList[6]->y;
+    
+    buttonList[8]->y = 185;
+    buttonList[8]->height = 20;
+    buttonList[9]->y = 210;
+    buttonList[9]->height = 20;
     
     // create and fill mod list
     modListing = listAllFiles("/3ds/data/Haxelektor/test/", &modCount, 1);
@@ -177,7 +205,10 @@ void uiInit() {
         
         memset(path, 0, MAXSIZE * sizeof(char*));
         snprintf(path, MAXSIZE, "3ds/data/Haxelektor/test/%s/image.png", modListing[i]);
-        pp2d_load_texture_png(i, path);
+        unsigned result = pp2d_load_texture_png(i, path);
+        if (result) {
+            pp2d_load_texture_png(i, "romfs:/notexist.png");
+        }
     }
     
     free(path);
@@ -187,14 +218,10 @@ LOOP_RETURN uiModSelectLoop() {
     pp2d_set_screen_color(GFX_TOP, LGREYBG);
     pp2d_set_screen_color(GFX_BOTTOM, LGREYBG);
     
-    // debug shit
-    //consoleInit(GFX_TOP, NULL);
+    char* strIndex = malloc(MAXSIZE * sizeof(char*));
     
     char desc[255];
     loadFromFile(desc);
-    
-    //printf("%s\n", desc);
-    //stall();
 
     while (aptMainLoop()) {
         int add = 0;
@@ -297,7 +324,19 @@ LOOP_RETURN uiModSelectLoop() {
         
         if (kDown & KEY_TOUCH) {
             switch (buttonTouched) {
-                // mixed these up, lol
+                case 5:
+                    if (entryIndex - 1 < 0)
+                        break;
+                    
+                    swapEntries(entryIndex, entryIndex - 1);
+                    entryIndex--;
+                    break;
+                case 6:
+                    entryIndex = entryIndex - 13;
+                    indexPos = indexPos - 13;
+                    if (entryIndex > 0)
+                        loadFromFile(desc);
+                    break;
                 case 7:
                     entryIndex = entryIndex + 13;
                     if ((entryIndex >= modCount) && indexPos != ((int)ceil((float)modCount / 13.0) - 1) * 13) {
@@ -307,11 +346,12 @@ LOOP_RETURN uiModSelectLoop() {
                     if (entryIndex < modCount)
                         loadFromFile(desc);
                     break;
-                case 6:
-                    entryIndex = entryIndex - 13;
-                    indexPos = indexPos - 13;
-                    if (entryIndex > 0)
-                        loadFromFile(desc);
+                case 8:
+                    if (entryIndex + 1 >= modCount)
+                        break;
+                    
+                    swapEntries(entryIndex, entryIndex + 1);
+                    entryIndex++;
                     break;
                 default:
                     break;
@@ -335,7 +375,7 @@ LOOP_RETURN uiModSelectLoop() {
             }
         }        
         
-
+        
         
         // display to screen
         pp2d_begin_draw(GFX_TOP);
@@ -349,18 +389,27 @@ LOOP_RETURN uiModSelectLoop() {
             int max = (indexPos + 13 < modCount) ? indexPos + 13 : modCount;
             
             for (int i = indexPos; i < max; i++) {
+                memset(strIndex, 0, MAXSIZE * sizeof(char*));
+                snprintf(strIndex, MAXSIZE, "%d", i + indexPos);
+                
                 if (i == entryIndex && cursorPos == 0)
                     pp2d_draw_rectangle(0, 20 + ((i % 13) * 15), 320, 15, GREYFG);
-                pp2d_draw_text(0, 20 + ((i % 13) * 15), 0.5f, 0.5f, WHITE, modListing[i]);
+                pp2d_draw_text(0, 20 + ((i % 13) * 15), 0.5f, 0.5f, WHITE, strIndex);
+                pp2d_draw_text(30, 20 + ((i % 13) * 15), 0.5f, 0.5f, WHITE, modListing[i]);
                 if (modSelected[i] != 0) 
                     pp2d_draw_text(150, 20 + ((i % 13) * 15), 0.5f, 0.5f, WHITE, "Selected");
             }
         
             // draw side and bottom bar
             pp2d_draw_rectangle(0, 0, 320, 20, GREYFG);
+            pp2d_draw_rectangle(0, 220, 320, 220, GREYFG);
             pp2d_draw_rectangle(210, 0, 120, 240, GREY2FG);
-            pp2d_draw_rectangle(0, 220, 320, 220, DGREY);
-        
+            
+            memset(strIndex, 0, MAXSIZE * sizeof(char*));
+            snprintf(strIndex, MAXSIZE, "Number of Mods: %d %d", (int)modCount, (int)entryIndex + 1);
+            
+            pp2d_draw_text(0, 0, 0.5f, 0.5f, WHITE, strIndex);
+            
             // draw all the side buttons
             for (int i = 0; i < NUMBTNS; i++) {
                 drawButton(buttonList[i], (i == buttonIndex && cursorPos == 1) || isButtonTouched(buttonList[i], &touch));
