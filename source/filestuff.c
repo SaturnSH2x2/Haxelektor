@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <dirent.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <string.h>
@@ -151,5 +152,33 @@ int copyDir(const char* src, const char* dst) {
     free(srcSubPath);
     free(dstSubPath);
 
+    return 0;
+}
+
+int removeDir(char* path) {
+    DIR* dir = opendir(path);
+    if (dir == NULL)
+        return 0;
+    
+    struct dirent* entry;
+    char* strPath = malloc(MAXDIRSIZE * sizeof(char*));
+    while ((entry = readdir(dir)) != NULL) {
+        if (strncmp(".", entry->d_name, sizeof(entry->d_name) == 0) || \
+            strncmp("..", entry->d_name, sizeof(entry->d_name) == 0))
+            continue;
+            
+        memset(strPath, 0, MAXDIRSIZE * sizeof(char*));
+        snprintf(strPath, MAXDIRSIZE, "%s/%s", path, entry->d_name);
+        
+        if (unlink(strPath) != 0) {
+            removeDir(strPath);
+            if (unlink(strPath) != 0)
+                return -1;
+        }
+    }
+    
+    free(strPath);
+    closedir(dir);
+    
     return 0;
 }

@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <3ds.h>
 
+#include <sys/stat.h>
+
 #include "pp2d/pp2d.h"
 #include "filestuff.h"
 #include "ui.h"
@@ -409,6 +411,26 @@ LOOP_RETURN uiModSelectLoop() {
         
         if (kDown & KEY_TOUCH) {
             switch (buttonTouched) {
+                case 1:
+                    uiLoading("Please wait.  Mods are being applied.");
+                    
+                    // create paths as necessary
+                    mkdir("/saltysd", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+                    
+                    // delete old unnecessary paths (TODO: add handling for different directories, it's kind of hardcoded here)
+                    removeDir("saltysd/smash");
+                    
+                    for (int i = modCount - 1; i >= 0; i--) {
+                        if (modSelected[i] == 0)
+                            continue;
+                        
+                        memset(strIndex, 0, MAXSIZE * sizeof(char*));
+                        snprintf(strIndex, MAXSIZE, "/3ds/data/Haxelektor/test/%s/mod", modListing[i]);
+                        copyDir(strIndex, "/saltysd/smash");
+                    }
+                        
+                    uiError("Mods applied.");
+                    break;
                 case 5:
                     if (entryIndex - 1 < 0)
                         break;
@@ -502,6 +524,7 @@ LOOP_RETURN uiModSelectLoop() {
         pp2d_end_draw();
     }
     
+    free(strIndex);
     return GO_BACK;
 }
 
