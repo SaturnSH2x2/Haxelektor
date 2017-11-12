@@ -32,6 +32,8 @@ char** modListing;
 u16 modCount;
 u8* modSelected;
 
+float noWidth;
+
 s16 entryIndex = 0;  // position of index in array
 u16 indexPos = 0;    // position of screen in array
 u8 cursorPos = 0;    // is the cursor in the file browser or the button list?
@@ -174,6 +176,8 @@ void uiInit() {
         createButton(buttonList[i], 220, 10 + (i * 25), 95, 27, i);
     }
     
+    noWidth = pp2d_get_text_width("No \uE001", 0.5f, 0.5f);
+    
     // Nothing like HARDCODING SHIT IN WHEN IT WON'T WORK FOR SOME STUPID-ASS FUCKING REASON OTHERWISE
     buttonList[0]->height = 20;
     buttonList[1]->height = 20;
@@ -212,6 +216,87 @@ void uiInit() {
     }
     
     free(path);
+}
+
+// prompts user for input
+int uiPrompt(const char* prompt) {
+    int result = -1;
+    pp2d_set_screen_color(GFX_TOP, LGREYBG);
+    pp2d_set_screen_color(GFX_BOTTOM, LGREYBG);
+    
+    while (aptMainLoop()) {
+        
+        // update
+        hidScanInput();
+        u32 kDown = hidKeysDown();
+        
+        if (kDown & KEY_B) {
+            result = -1;
+            break;
+        } else if (kDown & KEY_A) {
+            result = 0;
+            break;
+        }
+        
+        // display
+        pp2d_begin_draw(GFX_TOP);
+            pp2d_draw_rectangle(0, 0, 400, 15, GREYFG);
+            pp2d_draw_rectangle(0, 220, 400, 20, GREYFG);
+        
+            //pp2d_draw_rectangle(0, 100, 400, 15, GREYFG);
+            pp2d_draw_text_center(GFX_TOP, 100, 0.5f, 0.5f, WHITE, prompt);
+            pp2d_draw_text_center(GFX_TOP, 0, 0.5f, 0.5f, WHITE, "Answer the prompt.");
+            //pp2d_draw_rectangle(0, 200, 400, 15, GREYFG);
+            pp2d_draw_text(40,  223, 0.5f, 0.5f, WHITE, "Yes \uE000");
+            pp2d_draw_text(360 - noWidth, 223, 0.5f, 0.5f, WHITE, "No \uE001");
+        pp2d_end_draw();
+        
+        pp2d_begin_draw(GFX_BOTTOM);
+            pp2d_draw_rectangle(0, 0, 320, 20, GREYFG);
+            pp2d_draw_rectangle(0, 220, 320, 240, GREYFG);
+        pp2d_end_draw();
+    }
+    
+    return result;
+}
+
+void uiLoading() {
+    pp2d_begin_draw(GFX_TOP);
+        pp2d_draw_rectangle(0, 0, 400, 15, GREYFG);
+        pp2d_draw_rectangle(0, 220, 400, 20, GREYFG);
+        
+        pp2d_draw_text_center(GFX_TOP, 100, 0.5f, 0.5f, WHITE, "Please wait.");
+    pp2d_end_draw();
+    
+    pp2d_begin_draw(GFX_BOTTOM);
+        pp2d_draw_rectangle(0, 0, 320, 20, GREYFG);
+        pp2d_draw_rectangle(0, 220, 320, 240, GREYFG);
+    pp2d_end_draw();
+}
+    
+void uiError(const char* error) {
+    pp2d_set_screen_color(GFX_TOP, LGREYBG);
+    pp2d_set_screen_color(GFX_BOTTOM, LGREYBG);
+    
+    while (aptMainLoop()) {
+        hidScanInput();
+        u32 kDown = hidKeysDown();
+        
+        if (kDown)
+            break;
+        
+        pp2d_begin_draw(GFX_TOP);
+            pp2d_draw_rectangle(0, 0, 400, 15, GREYFG);
+            pp2d_draw_rectangle(0, 220, 400, 20, GREYFG);
+            pp2d_draw_text_center(GFX_TOP, 100, 0.5f, 0.5f, WHITE, error);
+            pp2d_draw_text_center(GFX_TOP, 223, 0.5f, 0.5f, WHITE, "Press any key to continue.");
+        pp2d_end_draw();
+        
+        pp2d_begin_draw(GFX_BOTTOM);
+            pp2d_draw_rectangle(0, 0, 320, 20, GREYFG);
+            pp2d_draw_rectangle(0, 220, 320, 240, GREYFG);
+        pp2d_end_draw();
+    }
 }
 
 LOOP_RETURN uiModSelectLoop() {
@@ -390,7 +475,7 @@ LOOP_RETURN uiModSelectLoop() {
             
             for (int i = indexPos; i < max; i++) {
                 memset(strIndex, 0, MAXSIZE * sizeof(char*));
-                snprintf(strIndex, MAXSIZE, "%d", i + indexPos);
+                snprintf(strIndex, MAXSIZE, "%d", i + indexPos + 1);
                 
                 if (i == entryIndex && cursorPos == 0)
                     pp2d_draw_rectangle(0, 20 + ((i % 13) * 15), 320, 15, GREYFG);
@@ -406,7 +491,7 @@ LOOP_RETURN uiModSelectLoop() {
             pp2d_draw_rectangle(210, 0, 120, 240, GREY2FG);
             
             memset(strIndex, 0, MAXSIZE * sizeof(char*));
-            snprintf(strIndex, MAXSIZE, "Number of Mods: %d %d", (int)modCount, (int)entryIndex + 1);
+            snprintf(strIndex, MAXSIZE, "Number of Mods: %d", (int)modCount);
             
             pp2d_draw_text(0, 0, 0.5f, 0.5f, WHITE, strIndex);
             

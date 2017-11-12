@@ -34,6 +34,9 @@ typedef struct {
 } UICursor;
 
 void uiInit();
+void uiError(const char* error);
+void uiLoading();
+int uiPrompt(const char* prompt);
 LOOP_RETURN uiModSelectLoop();
 void uiExit();
 
