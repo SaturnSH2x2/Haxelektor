@@ -2,6 +2,7 @@
 #define UI_H
 
 typedef enum {
+    LAUNCH_GAME,
     GO_BACK,
     REBOOT
 } LOOP_RETURN;

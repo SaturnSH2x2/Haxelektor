@@ -429,6 +429,9 @@ LOOP_RETURN uiModSelectLoop() {
         
         if (kDown & KEY_TOUCH) {
             switch (buttonTouched) {
+                case 0:
+                    free(strIndex);
+                    return LAUNCH_GAME;
                 case 1:
                     uiLoading();
                     char* temp = malloc(MAXSIZE * sizeof(char*));
@@ -469,7 +472,17 @@ LOOP_RETURN uiModSelectLoop() {
                     }
                         
                     free(temp);
-                    uiError("Mods applied.");
+                    uiError("Patches for this game have been applied.");
+                    break;
+                case 2:
+                    memset(strIndex, 0, MAXSIZE * sizeof(char*));
+                    if (isSaltySD == 0)
+                        snprintf(strIndex, MAXSIZE, "/luma/titles/%s/romfs", currentTid);
+                    else if (isSaltySD == 1)
+                        snprintf(strIndex, MAXSIZE, "saltysd/smash");
+                    
+                    removeDir(strIndex);
+                    uiError("All patches for this game have been removed.");
                     break;
                 case 5:
                     if (entryIndex - 1 < 0)
@@ -500,6 +513,9 @@ LOOP_RETURN uiModSelectLoop() {
                     swapEntries(entryIndex, entryIndex + 1);
                     entryIndex++;
                     break;
+                case 9:
+                    free(strIndex);
+                    return GO_BACK;
                 default:
                     break;
             };
