@@ -12,7 +12,7 @@ int main() {
     romfsInit();
     //consoleInit(GFX_TOP, NULL);
     
-    uiInit();
+    uiInit("00040000001B2900");
     uiModSelectLoop();
     
     uiExit();

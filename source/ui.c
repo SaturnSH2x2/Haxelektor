@@ -31,8 +31,14 @@ UIButton** buttonList;
 
 // required for listing files in mod select
 char** modListing;
+char* currentTid;
 u16 modCount;
 u8* modSelected;
+
+u8 isSaltySD = 0;
+    // 0 -> LayeredFS
+    // 1 -> SaltySD for Smash 4
+    // 2 -> SaltySD for Pokemon S/M
 
 float noWidth;
 
@@ -61,7 +67,7 @@ void stall() {
 void loadFromFile(char* desc) {
     char* path = malloc(MAXSIZE * sizeof(char*));
     
-    snprintf(path, MAXSIZE, "/3ds/data/Haxelektor/test/%s/description.txt", modListing[entryIndex]);
+    snprintf(path, MAXSIZE, "/3ds/data/Haxelektor/%s/%s/description.txt", currentTid, modListing[entryIndex]);
     FILE* fp = fopen(path, "r");
     if (fp == NULL) {
         snprintf(desc, MAXSIZE, "No description provided.");
@@ -170,7 +176,7 @@ void createModEntry(GameMod* mod, char* name, char* description, int imgID) {
     mod->isSelected = 0;
 }
 
-void uiInit() {
+void uiInit(char* tid) {
     // create them buttons
     buttonList = malloc(NUMBTNS * sizeof(*buttonList));
     for (int i = 0; i < NUMBTNS; i++) {
@@ -201,21 +207,33 @@ void uiInit() {
     buttonList[9]->y = 210;
     buttonList[9]->height = 20;
     
+    // are we working with a SaltySD title?
+    if (strncmp("00040000000EE000", tid, MAXSIZE) == 0 ||  // Smash Bros. EUR
+        strncmp("00040000000EDF00", tid, MAXSIZE) == 0)
+        isSaltySD = 1;
+    
     // create and fill mod list
-    modListing = listAllFiles("/3ds/data/Haxelektor/test/", &modCount, 1);
+    char* path = malloc(MAXSIZE * sizeof(char*));
+    memset(path, 0, MAXSIZE * sizeof(char*));
+    snprintf(path, MAXSIZE, "/3ds/data/Haxelektor/%s", tid);
+    
+    modListing = listAllFiles(path, &modCount, 1);
     modSelected = malloc(modCount * sizeof(u8*));
     
-    char* path = malloc(MAXSIZE * sizeof(char*));
     for (int i = 0; i < modCount; i++) {
         modSelected[i] = 0;
         
         memset(path, 0, MAXSIZE * sizeof(char*));
-        snprintf(path, MAXSIZE, "3ds/data/Haxelektor/test/%s/image.png", modListing[i]);
+        snprintf(path, MAXSIZE, "3ds/data/Haxelektor/%s/%s/image.png", tid, modListing[i]);
         unsigned result = pp2d_load_texture_png(i, path);
         if (result) {
             pp2d_load_texture_png(i, "romfs:/notexist.png");
         }
     }
+    
+    currentTid = malloc(MAXSIZE * sizeof(char*));
+    memset(currentTid, 0, MAXSIZE * sizeof(char*));
+    snprintf(currentTid, MAXSIZE, "%s", tid);
     
     free(path);
 }
@@ -412,23 +430,45 @@ LOOP_RETURN uiModSelectLoop() {
         if (kDown & KEY_TOUCH) {
             switch (buttonTouched) {
                 case 1:
-                    uiLoading("Please wait.  Mods are being applied.");
-                    
+                    uiLoading();
+                    char* temp = malloc(MAXSIZE * sizeof(char*));
+                     
                     // create paths as necessary
-                    mkdir("/saltysd", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+                    if (isSaltySD == 0) {
+                        mkdir("/luma", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+                        mkdir("/luma/titles", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+                        
+                        memset(temp, 0, MAXSIZE * sizeof(char*));
+                        snprintf(temp, MAXSIZE, "/luma/titles/%s", currentTid);
+                        mkdir(temp, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+                        
+                        memset(temp, 0, MAXSIZE * sizeof(char*));
+                        snprintf(temp, MAXSIZE, "/luma/titles/%s/romfs", currentTid);
+                        mkdir(temp, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+                    } else if (isSaltySD == 1) {
+                        mkdir("/saltysd", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+                    }
                     
-                    // delete old unnecessary paths (TODO: add handling for different directories, it's kind of hardcoded here)
-                    removeDir("saltysd/smash");
+                    memset(temp, 0, MAXSIZE * sizeof(char*));
+                    if (isSaltySD == 1) { // Smash 4
+                        snprintf(temp, MAXSIZE, "/saltysd/smash");
+                    } else {
+                        snprintf(temp, MAXSIZE, "/luma/titles/%s/romfs", currentTid);
+                    }
+
+                    // delete old unnecessary mod folders, if they exist
+                    removeDir(temp);
                     
                     for (int i = modCount - 1; i >= 0; i--) {
                         if (modSelected[i] == 0)
                             continue;
                         
                         memset(strIndex, 0, MAXSIZE * sizeof(char*));
-                        snprintf(strIndex, MAXSIZE, "/3ds/data/Haxelektor/test/%s/mod", modListing[i]);
-                        copyDir(strIndex, "/saltysd/smash");
+                        snprintf(strIndex, MAXSIZE, "/3ds/data/Haxelektor/%s/%s/mod",currentTid, modListing[i]);
+                        copyDir(strIndex, temp);
                     }
                         
+                    free(temp);
                     uiError("Mods applied.");
                     break;
                 case 5:
@@ -529,6 +569,7 @@ LOOP_RETURN uiModSelectLoop() {
 }
 
 void uiExit() {
+    free(currentTid);
     free(modListing);  
     free(buttonList);
     free(modSelected);
