@@ -542,13 +542,20 @@ LOOP_RETURN uiModSelectLoop() {
             loadFromFile(desc);
         }
         
-        if (indexPos >= modCount)
+        if (indexPos >= modCount) {
+            entryIndex = 0;
             indexPos = 0;
+            loadFromFile(desc);
+        } else if (indexPos < 0) {
+            indexPos = ((int)ceil((float)modCount / 13.0) - 1) * 13;
+            entryIndex = indexPos;
+            loadFromFile(desc);
+        }
 
         if (buttonIndex >= NUMBTNS)
             buttonIndex = 0;
-        else if (buttonIndex < 0)
-            buttonIndex = NUMBTNS - 1;     
+        else if (buttonIndex < 0) 
+            buttonIndex = NUMBTNS - 1;            
         
         // display to screen
         pp2d_begin_draw(GFX_TOP);
