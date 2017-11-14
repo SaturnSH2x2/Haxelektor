@@ -335,6 +335,8 @@ LOOP_RETURN uiModSelectLoop() {
         hidScanInput();
         u32 kDown = hidKeysDown();
         
+        s16 buttonTouched;
+        
         touchPosition touch;
         hidTouchRead(&touch);
         
@@ -412,6 +414,10 @@ LOOP_RETURN uiModSelectLoop() {
                     else
                         cursorPos = !cursorPos;
                     break;
+                case KEY_A:
+                    buttonTouched = buttonIndex;
+                    goto buttonInteraction;
+                    break;
                 default:
                     break;
             };
@@ -423,11 +429,12 @@ LOOP_RETURN uiModSelectLoop() {
         }
         
         // touch input
-        s16 buttonTouched = getCurrentButtonTouched(&touch);
+        buttonTouched = getCurrentButtonTouched(&touch);
         if (buttonTouched != -1)
             printf("button touched: %d\n", buttonTouched);
         
         if (kDown & KEY_TOUCH) {
+            buttonInteraction:
             switch (buttonTouched) {
                 case 0:
                     free(strIndex);
