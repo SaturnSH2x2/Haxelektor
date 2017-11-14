@@ -378,14 +378,6 @@ LOOP_RETURN uiModSelectLoop() {
                 indexPos = ((int)ceil((float)modCount / 13.0) - 1) * 13;
                 loadFromFile(desc);
             }
-        
-            if (entryIndex < indexPos) {
-                indexPos = indexPos - 13;
-                loadFromFile(desc);
-            } else if ((entryIndex % 13) == 0 && entryIndex != 0 && add == 1) {
-                indexPos = indexPos + 13;
-                loadFromFile(desc);
-            }
         } else if (cursorPos == 1) {
             switch (kDown) {
                 case KEY_UP:
@@ -421,11 +413,6 @@ LOOP_RETURN uiModSelectLoop() {
                 default:
                     break;
             };
-            
-            if (buttonIndex >= NUMBTNS)
-                buttonIndex = 0;
-            else if (buttonIndex < 0)
-                buttonIndex = NUMBTNS - 1;
         }
         
         // touch input
@@ -439,6 +426,7 @@ LOOP_RETURN uiModSelectLoop() {
                 case 0:
                     free(strIndex);
                     return LAUNCH_GAME;
+                    break;
                 case 1:
                     uiLoading();
                     char* temp = malloc(MAXSIZE * sizeof(char*));
@@ -543,9 +531,24 @@ LOOP_RETURN uiModSelectLoop() {
                         break;
                    }
             }
-        }        
+        }    
         
+        // keep indices in place
+        if (entryIndex < indexPos) {
+            indexPos = indexPos - 13;
+            loadFromFile(desc);
+        } else if ((entryIndex % 13) == 0 && entryIndex != 0 && add == 1) {
+            indexPos = indexPos + 13;
+            loadFromFile(desc);
+        }
         
+        if (indexPos >= modCount)
+            indexPos = 0;
+
+        if (buttonIndex >= NUMBTNS)
+            buttonIndex = 0;
+        else if (buttonIndex < 0)
+            buttonIndex = NUMBTNS - 1;     
         
         // display to screen
         pp2d_begin_draw(GFX_TOP);
@@ -564,6 +567,8 @@ LOOP_RETURN uiModSelectLoop() {
                 
                 if (i == entryIndex && cursorPos == 0)
                     pp2d_draw_rectangle(0, 20 + ((i % 13) * 15), 320, 15, GREYFG);
+                else if (i == entryIndex)
+                    pp2d_draw_rectangle(0, 20 + ((i % 13) * 15), 320, 15, GREY2FG);
                 pp2d_draw_text(0, 20 + ((i % 13) * 15), 0.5f, 0.5f, WHITE, strIndex);
                 pp2d_draw_text(30, 20 + ((i % 13) * 15), 0.5f, 0.5f, WHITE, modListing[i]);
                 if (modSelected[i] != 0) 
