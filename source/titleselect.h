@@ -31,7 +31,7 @@ typedef struct {
     
     // app settings
     smdhAppSettings appSettings;
-    u8 reserved[0x8];
+    u8 reserved2[0x8];
     
     // icon data
     u8 smallIconData[0x480];
