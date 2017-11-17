@@ -67,7 +67,7 @@ void stall() {
 void loadFromFile(char* desc) {
     char* path = malloc(MAXSIZE * sizeof(char*));
     
-    snprintf(path, MAXSIZE, "/3ds/data/Haxelektor/%s/%s/description.txt", currentTid, modListing[entryIndex]);
+    snprintf(path, MAXSIZE, "/3ds/data/Haxelektor/%s/mods/%s/description.txt", currentTid, modListing[entryIndex]);
     FILE* fp = fopen(path, "r");
     if (fp == NULL) {
         snprintf(desc, MAXSIZE, "No description provided.");
@@ -215,7 +215,7 @@ void uiInit(char* tid) {
     // create and fill mod list
     char* path = malloc(MAXSIZE * sizeof(char*));
     memset(path, 0, MAXSIZE * sizeof(char*));
-    snprintf(path, MAXSIZE, "/3ds/data/Haxelektor/%s", tid);
+    snprintf(path, MAXSIZE, "/3ds/data/Haxelektor/%s/mods", tid);
     
     modListing = listAllFiles(path, &modCount, 1);
     modSelected = malloc(modCount * sizeof(u8*));
@@ -224,7 +224,7 @@ void uiInit(char* tid) {
         modSelected[i] = 0;
         
         memset(path, 0, MAXSIZE * sizeof(char*));
-        snprintf(path, MAXSIZE, "3ds/data/Haxelektor/%s/%s/image.png", tid, modListing[i]);
+        snprintf(path, MAXSIZE, "3ds/data/Haxelektor/%s/mods/%s/image.png", tid, modListing[i]);
         unsigned result = pp2d_load_texture_png(i, path);
         if (result) {
             pp2d_load_texture_png(i, "romfs:/notexist.png");
@@ -462,7 +462,7 @@ LOOP_RETURN uiModSelectLoop() {
                             continue;
                         
                         memset(strIndex, 0, MAXSIZE * sizeof(char*));
-                        snprintf(strIndex, MAXSIZE, "/3ds/data/Haxelektor/%s/%s/mod",currentTid, modListing[i]);
+                        snprintf(strIndex, MAXSIZE, "/3ds/data/Haxelektor/%s/mods/%s/mod",currentTid, modListing[i]);
                         copyDir(strIndex, temp);
                     }
                         
