@@ -6,6 +6,7 @@
 #include "pp2d/pp2d.h"
 #include "filestuff.h"
 #include "ui.h"
+#include "json.h"
 
 #define WHITE   RGBA8(255, 255, 255, 255)
 #define GREYBG  RGBA8(255, 120, 120, 120)
@@ -31,8 +32,10 @@ UIButton** buttonList;
 
 // required for listing files in mod select
 char** modListing;
+char** configListing;
 char* currentTid;
 u16 modCount;
+u16 configCount;
 u8* modSelected;
 
 u8 isSaltySD = 0;
@@ -45,6 +48,7 @@ float noWidth;
 s16 entryIndex = 0;  // position of index in array
 u16 indexPos = 0;    // position of screen in array
 u8 cursorPos = 0;    // is the cursor in the file browser or the button list?
+s16 configIndex = 0; // for 
 s16 buttonIndex = 0;
 
 // END
@@ -231,6 +235,14 @@ void uiInit(char* tid) {
         }
     }
     
+    // create and fill config list
+    memset(path, 0, MAXSIZE * sizeof(char*));
+    snprintf(path, MAXSIZE, "/3ds/data/Haxelektor/%s/config/", tid);
+    
+    mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    configListing = listAllFiles(path, &configCount, 0);
+    
+    // set TID
     currentTid = malloc(MAXSIZE * sizeof(char*));
     memset(currentTid, 0, MAXSIZE * sizeof(char*));
     snprintf(currentTid, MAXSIZE, "%s", tid);
@@ -323,7 +335,11 @@ LOOP_RETURN uiModSelectLoop() {
     pp2d_set_screen_color(GFX_TOP, LGREYBG);
     pp2d_set_screen_color(GFX_BOTTOM, LGREYBG);
     
+    int selectConfig = 0;
+    s16 lCount = modCount;
+    
     char* strIndex = malloc(MAXSIZE * sizeof(char*));
+    char** listing = modListing;
     
     char desc[255];
     loadFromFile(desc);
@@ -349,33 +365,75 @@ LOOP_RETURN uiModSelectLoop() {
             switch (kDown) {
                 case KEY_UP:
                     entryIndex--;
-                    loadFromFile(desc);
+                    if (selectConfig == 0)
+                        loadFromFile(desc);
                     break;
                 case KEY_DOWN:
                     entryIndex++;
-                    loadFromFile(desc);
+                    if (selectConfig == 0)
+                        loadFromFile(desc);
                     add = 1;
                     break;
                 case KEY_LEFT:
-                    cursorPos = !cursorPos;
+                    if (selectConfig == 0)
+                        cursorPos = !cursorPos;
+                    else {
+                        entryIndex = entryIndex - 13;
+                        indexPos = indexPos - 13;   
+                    }
                     break;
                 case KEY_RIGHT:
-                    cursorPos = !cursorPos;
+                    if (selectConfig == 0)
+                        cursorPos = !cursorPos;
+                    else {
+                        entryIndex = entryIndex + 13;
+                        if ((entryIndex >= lCount) && indexPos != ((int)ceil((float)lCount / 13.0) - 1) * 13) {
+                            entryIndex = lCount - 1;
+                        }
+                        indexPos = indexPos + 13;
+                    }
                     break;
                 case KEY_A:
-                    modSelected[entryIndex] = !modSelected[entryIndex];
+                    loadConfig:
+                    if (selectConfig == 0)
+                        modSelected[entryIndex] = !modSelected[entryIndex];
+                    else {
+                        // load configuration
+                        memset(strIndex, 0, MAXSIZE * sizeof(char*));
+                        snprintf(strIndex, MAXSIZE, "/3ds/data/Haxelektor/%s/config/%s", currentTid, listing[entryIndex]);
+                        int result = jsonLoad(strIndex, modCount, modListing, modSelected);
+ 
+
+                        
+                        if (result == -1)
+                            uiError("Failed to load configuration.");
+                        else
+                            uiError("Configuration loaded.");
+                    }
+                        
+                case KEY_B:
+                    // change mode back
+                    selectConfig = 0;
+                    entryIndex = 0;
+                    indexPos = 0;
+                    cursorPos = 0;
+                    configIndex = 0;
+                    buttonIndex = 0;
+                    kDown = 0;
+                    listing = modListing;
+                    lCount = modCount;
                     break;
                 default:
                     break;
             };
             
-            if (entryIndex >= modCount) {
+            if (entryIndex >= lCount) {
                 entryIndex = 0;
                 indexPos = 0;
                 loadFromFile(desc);
             } else if (entryIndex < 0) {
-                entryIndex = modCount - 1;
-                indexPos = ((int)ceil((float)modCount / 13.0) - 1) * 13;
+                entryIndex = lCount - 1;
+                indexPos = ((int)ceil((float)lCount / 13.0) - 1) * 13;
                 loadFromFile(desc);
             }
         } else if (cursorPos == 1) {
@@ -424,10 +482,14 @@ LOOP_RETURN uiModSelectLoop() {
             buttonInteraction:
             switch (buttonTouched) {
                 case 0:
+                    if (selectConfig != 0)
+                        break;
                     free(strIndex);
                     return LAUNCH_GAME;
                     break;
                 case 1:
+                    if (selectConfig != 0)
+                        break;
                     uiLoading();
                     char* temp = malloc(MAXSIZE * sizeof(char*));
                      
@@ -470,6 +532,8 @@ LOOP_RETURN uiModSelectLoop() {
                     uiError("Patches for this game have been applied.");
                     break;
                 case 2:
+                    if (selectConfig != 0)
+                        break;
                     memset(strIndex, 0, MAXSIZE * sizeof(char*));
                     if (isSaltySD == 0)
                         snprintf(strIndex, MAXSIZE, "/luma/titles/%s/romfs", currentTid);
@@ -479,7 +543,17 @@ LOOP_RETURN uiModSelectLoop() {
                     removeDir(strIndex);
                     uiError("All patches for this game have been removed.");
                     break;
+                case 4:
+                    if (selectConfig != 0)
+                        break;
+                    selectConfig = !selectConfig;
+                    listing = configListing;
+                    lCount = configCount;
+                    cursorPos = 0;
+                    break;
                 case 5:
+                    if (selectConfig != 0)
+                        break;
                     if (entryIndex - 1 < 0)
                         break;
                     
@@ -487,12 +561,16 @@ LOOP_RETURN uiModSelectLoop() {
                     entryIndex--;
                     break;
                 case 6:
+                    if (selectConfig != 0)
+                        break;
                     entryIndex = entryIndex - 13;
                     indexPos = indexPos - 13;
                     if (entryIndex > 0)
                         loadFromFile(desc);
                     break;
                 case 7:
+                    if (selectConfig != 0)
+                        break;
                     entryIndex = entryIndex + 13;
                     if ((entryIndex >= modCount) && indexPos != ((int)ceil((float)modCount / 13.0) - 1) * 13) {
                         entryIndex = modCount - 1;
@@ -502,6 +580,8 @@ LOOP_RETURN uiModSelectLoop() {
                         loadFromFile(desc);
                     break;
                 case 8:
+                    if (selectConfig != 0)
+                        break;
                     if (entryIndex + 1 >= modCount)
                         break;
                     
@@ -509,6 +589,8 @@ LOOP_RETURN uiModSelectLoop() {
                     entryIndex++;
                     break;
                 case 9:
+                    if (selectConfig != 0)
+                        break;
                     free(strIndex);
                     return GO_BACK;
                 default:
@@ -517,13 +599,16 @@ LOOP_RETURN uiModSelectLoop() {
             
             s16 prevEntryIndex = entryIndex;
             for (int i = 0; i < 13; i++) {
-                if ((0 <= touch.px && touch.px <= 200) && \
+                int horizReach = (selectConfig == 0) ? 200 : 320;
+                if ((0 <= touch.px && touch.px <= horizReach) && \
                    (20 + ((i % 13) * 15) <= touch.py && touch.py <= 20 + ((i % 13) * 15) + 15)) {
-                       entryIndex = indexPos + i;
-                       if (entryIndex == prevEntryIndex)
+                        entryIndex = indexPos + i;
+                        if (entryIndex == prevEntryIndex && selectConfig == 0)
                            modSelected[indexPos + i] = !modSelected[indexPos + i];
-                        else
+                        else if (selectConfig == 0)
                             loadFromFile(desc);
+                        else if (selectConfig != 0 && entryIndex == prevEntryIndex)
+                            goto loadConfig;
                         
                         
                         if (cursorPos != 0)
@@ -542,12 +627,12 @@ LOOP_RETURN uiModSelectLoop() {
             loadFromFile(desc);
         }
         
-        if (indexPos >= modCount) {
+        if (indexPos >= lCount) {
             entryIndex = 0;
             indexPos = 0;
             loadFromFile(desc);
         } else if (indexPos < 0) {
-            indexPos = ((int)ceil((float)modCount / 13.0) - 1) * 13;
+            indexPos = ((int)ceil((float)lCount / 13.0) - 1) * 13;
             entryIndex = indexPos;
             loadFromFile(desc);
         }
@@ -559,14 +644,17 @@ LOOP_RETURN uiModSelectLoop() {
         
         // display to screen
         pp2d_begin_draw(GFX_TOP);
-            pp2d_draw_texture(entryIndex, 0, 0);
-            pp2d_draw_rectangle(0, 220, 400, 20, GREYFG);
-            pp2d_draw_text(0, 223, 0.5f, 0.5f, WHITE, desc);
+            pp2d_draw_rectangle(0, 0, 400, 240, GREYFG);
+            if (selectConfig == 0) {
+                pp2d_draw_texture(entryIndex, 0, 0);
+                pp2d_draw_rectangle(0, 220, 400, 20, GREYFG);
+                pp2d_draw_text(0, 223, 0.5f, 0.5f, WHITE, desc);
+            }
         pp2d_end_draw(); 
         
         pp2d_begin_draw(GFX_BOTTOM);
             // draw mod entries
-            int max = (indexPos + 13 < modCount) ? indexPos + 13 : modCount;
+            int max = (indexPos + 13 < lCount) ? indexPos + 13 : lCount;
             
             for (int i = indexPos; i < max; i++) {
                 memset(strIndex, 0, MAXSIZE * sizeof(char*));
@@ -577,33 +665,40 @@ LOOP_RETURN uiModSelectLoop() {
                 else if (i == entryIndex)
                     pp2d_draw_rectangle(0, 20 + ((i % 13) * 15), 320, 15, GREY2FG);
                 pp2d_draw_text(0, 20 + ((i % 13) * 15), 0.5f, 0.5f, WHITE, strIndex);
-                pp2d_draw_text(30, 20 + ((i % 13) * 15), 0.5f, 0.5f, WHITE, modListing[i]);
-                if (modSelected[i] != 0) 
+                pp2d_draw_text(30, 20 + ((i % 13) * 15), 0.5f, 0.5f, WHITE, listing[i]);
+                if (modSelected[i] != 0 && selectConfig == 0) 
                     pp2d_draw_text(150, 20 + ((i % 13) * 15), 0.5f, 0.5f, WHITE, "Selected");
             }
         
             // draw side and bottom bar
             pp2d_draw_rectangle(0, 0, 320, 20, GREYFG);
             pp2d_draw_rectangle(0, 220, 320, 220, GREYFG);
-            pp2d_draw_rectangle(210, 0, 120, 240, GREY2FG);
+            if (selectConfig == 0)
+                pp2d_draw_rectangle(210, 0, 120, 240, GREY2FG);
             
             memset(strIndex, 0, MAXSIZE * sizeof(char*));
-            snprintf(strIndex, MAXSIZE, "Number of Mods: %d", (int)modCount);
+            if (selectConfig == 0)
+                snprintf(strIndex, MAXSIZE, "Number of Mods: %d", (int)modCount);
+            else
+                snprintf(strIndex, MAXSIZE, "Select a config file.");
             
             pp2d_draw_text(0, 0, 0.5f, 0.5f, WHITE, strIndex);
             
             // draw all the side buttons
-            for (int i = 0; i < NUMBTNS; i++) {
-                drawButton(buttonList[i], (i == buttonIndex && cursorPos == 1) || isButtonTouched(buttonList[i], &touch));
-            }
+            if (selectConfig == 0)
+                for (int i = 0; i < NUMBTNS; i++) {
+                    drawButton(buttonList[i], (i == buttonIndex && cursorPos == 1) || isButtonTouched(buttonList[i], &touch));
+                }
         pp2d_end_draw();
     }
     
+    listing = NULL;
     free(strIndex);
     return GO_BACK;
 }
 
 void uiExit() {
+    free(configListing);
     free(currentTid);
     free(modListing);  
     free(buttonList);

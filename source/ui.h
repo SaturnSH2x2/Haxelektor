@@ -34,6 +34,9 @@ typedef struct {
     int index;
 } UICursor;
 
+// it's probably really irresponsible to put this function here, but whatever
+void swapEntries(int index1, int index2);
+
 void uiInit();
 void uiError(const char* error);
 void uiLoading();
