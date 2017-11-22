@@ -58,8 +58,8 @@ int jsonLoad(char* path, s16 selCount, char** selections, u8* selectArray) {
     return 0;
 }
 
-int jsonSave(char* path, int selCount, char** selections, u8* selectArray) {
-	FILE* fp = fopen(path, "r+");
+int jsonSave(char* path, s16 selCount, char** selections, u8* selectArray) {
+	FILE* fp = fopen(path, "w+");
 	if (fp == NULL)
 		return -1;
 

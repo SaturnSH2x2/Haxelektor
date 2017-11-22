@@ -543,6 +543,16 @@ LOOP_RETURN uiModSelectLoop() {
                     removeDir(strIndex);
                     uiError("All patches for this game have been removed.");
                     break;
+                case 3:
+                    // TODO: kinda stubbed, implement naming stuff and shit
+                    memset(strIndex, 0, MAXSIZE * sizeof(char*));
+                    snprintf(strIndex, MAXSIZE, "/3ds/data/Haxelektor/%s/config/program-generated.json", currentTid);
+                    int result = jsonSave(strIndex, modCount, modListing, modSelected);
+                    if (result == -1)
+                        uiError("Saving configuration failed.");
+                    else
+                        uiError("Configuration successfully saved.");
+                    break;
                 case 4:
                     if (selectConfig != 0)
                         break;
