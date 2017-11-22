@@ -212,9 +212,12 @@ void uiInit(char* tid) {
     buttonList[9]->height = 20;
     
     // are we working with a SaltySD title?
-    if (strncmp("00040000000EE000", tid, MAXSIZE) == 0 ||  // Smash Bros. EUR
+    if (strncmp("00040000000EE000", tid, MAXSIZE) == 0 ||  // Smash Bros.
         strncmp("00040000000EDF00", tid, MAXSIZE) == 0)
         isSaltySD = 1;
+    else if (strncmp("0004000000164800", tid, MAXSIZE) == 0 ||
+             strncmp("0004000000175E00", tid, MAXSIZE) == 0)
+        isSaltySD = 2;
     
     // create and fill mod list
     char* path = malloc(MAXSIZE * sizeof(char*));
@@ -410,18 +413,20 @@ LOOP_RETURN uiModSelectLoop() {
                         else
                             uiError("Configuration loaded.");
                     }
-                        
+                     
                 case KEY_B:
                     // change mode back
-                    selectConfig = 0;
-                    entryIndex = 0;
-                    indexPos = 0;
-                    cursorPos = 0;
-                    configIndex = 0;
-                    buttonIndex = 0;
-                    kDown = 0;
-                    listing = modListing;
-                    lCount = modCount;
+                    if (selectConfig != 0) {
+                        selectConfig = 0;
+                        entryIndex = 0;
+                        indexPos = 0;
+                        cursorPos = 0;
+                        configIndex = 0;
+                        buttonIndex = 0;
+                        kDown = 0;
+                        listing = modListing;
+                        lCount = modCount;
+                    }
                     break;
                 default:
                     break;
@@ -505,13 +510,15 @@ LOOP_RETURN uiModSelectLoop() {
                         memset(temp, 0, MAXSIZE * sizeof(char*));
                         snprintf(temp, MAXSIZE, "/luma/titles/%s/romfs", currentTid);
                         mkdir(temp, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-                    } else if (isSaltySD == 1) {
+                    } else if (isSaltySD == 1 || isSaltySD == 2) {
                         mkdir("/saltysd", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-                    }
+                    } 
                     
                     memset(temp, 0, MAXSIZE * sizeof(char*));
                     if (isSaltySD == 1) { // Smash 4
                         snprintf(temp, MAXSIZE, "/saltysd/smash");
+                    } else if (isSaltySD == 2) {
+                        snprintf(temp, MAXSIZE, "/saltysd/SunMoon");
                     } else {
                         snprintf(temp, MAXSIZE, "/luma/titles/%s/romfs", currentTid);
                     }
@@ -539,6 +546,8 @@ LOOP_RETURN uiModSelectLoop() {
                         snprintf(strIndex, MAXSIZE, "/luma/titles/%s/romfs", currentTid);
                     else if (isSaltySD == 1)
                         snprintf(strIndex, MAXSIZE, "saltysd/smash");
+                    else if (isSaltySD == 2)
+                        snprintf(strIndex, MAXSIZE, "saltysd/SunMoon");
                     
                     removeDir(strIndex);
                     uiError("All patches for this game have been removed.");
