@@ -15,7 +15,7 @@ int main() {
     uiInit("0004000000175E00");
     uiModSelectLoop();
     
-    uiExit();
+    //uiExit();
     romfsExit();
     pp2d_exit();
 	return 0;

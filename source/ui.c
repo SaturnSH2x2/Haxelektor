@@ -346,6 +346,8 @@ LOOP_RETURN uiModSelectLoop() {
     
     char desc[255];
     loadFromFile(desc);
+    
+    int max = 0;
 
     while (aptMainLoop()) {
         int add = 0;
@@ -363,21 +365,22 @@ LOOP_RETURN uiModSelectLoop() {
         if (kDown & KEY_START)
             break;
         
+        
         // button input
         if (cursorPos == 0) {
             switch (kDown) {
-                case KEY_UP:
+                case KEY_DUP:
                     entryIndex--;
                     if (selectConfig == 0)
                         loadFromFile(desc);
                     break;
-                case KEY_DOWN:
+                case KEY_DDOWN:
                     entryIndex++;
                     if (selectConfig == 0)
                         loadFromFile(desc);
                     add = 1;
                     break;
-                case KEY_LEFT:
+                case KEY_DLEFT:
                     if (selectConfig == 0)
                         cursorPos = !cursorPos;
                     else {
@@ -385,7 +388,7 @@ LOOP_RETURN uiModSelectLoop() {
                         indexPos = indexPos - 13;   
                     }
                     break;
-                case KEY_RIGHT:
+                case KEY_DRIGHT:
                     if (selectConfig == 0)
                         cursorPos = !cursorPos;
                     else {
@@ -443,17 +446,17 @@ LOOP_RETURN uiModSelectLoop() {
             }
         } else if (cursorPos == 1) {
             switch (kDown) {
-                case KEY_UP:
+                case KEY_DUP:
                     if (buttonIndex == 7)
                         buttonIndex--;
                     buttonIndex--;
                     break;
-                case KEY_DOWN:
+                case KEY_DDOWN:
                     if (buttonIndex == 6)
                         buttonIndex++;
                     buttonIndex++;
                     break;
-                case KEY_LEFT:
+                case KEY_DLEFT:
                     if (buttonIndex == 7)
                         buttonIndex--;
                     else if (buttonIndex == 6)
@@ -461,7 +464,7 @@ LOOP_RETURN uiModSelectLoop() {
                     else
                         cursorPos = !cursorPos;
                     break;
-                case KEY_RIGHT:
+                case KEY_DRIGHT:
                     if (buttonIndex == 6)
                         buttonIndex++;
                     else if (buttonIndex == 7)
@@ -482,6 +485,8 @@ LOOP_RETURN uiModSelectLoop() {
         buttonTouched = getCurrentButtonTouched(&touch);
         if (buttonTouched != -1)
             printf("button touched: %d\n", buttonTouched);
+        
+        max = (indexPos + 13 < lCount) ? indexPos + 13 : lCount;
         
         if (kDown & KEY_TOUCH) {
             buttonInteraction:
@@ -617,7 +622,8 @@ LOOP_RETURN uiModSelectLoop() {
             };
             
             s16 prevEntryIndex = entryIndex;
-            for (int i = 0; i < 13; i++) {
+
+            for (int i = 0; i < max; i++) {
                 int horizReach = (selectConfig == 0) ? 200 : 320;
                 if ((0 <= touch.px && touch.px <= horizReach) && \
                    (20 + ((i % 13) * 15) <= touch.py && touch.py <= 20 + ((i % 13) * 15) + 15)) {
@@ -673,7 +679,7 @@ LOOP_RETURN uiModSelectLoop() {
         
         pp2d_begin_draw(GFX_BOTTOM);
             // draw mod entries
-            int max = (indexPos + 13 < lCount) ? indexPos + 13 : lCount;
+            
             
             for (int i = indexPos; i < max; i++) {
                 memset(strIndex, 0, MAXSIZE * sizeof(char*));
