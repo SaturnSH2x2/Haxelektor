@@ -348,6 +348,11 @@ LOOP_RETURN uiModSelectLoop() {
     loadFromFile(desc);
     
     int max = 0;
+    
+    SwkbdState kbd;
+    SwkbdButton btn;
+    
+    char* saveTempPath;
 
     while (aptMainLoop()) {
         int add = 0;
@@ -559,17 +564,40 @@ LOOP_RETURN uiModSelectLoop() {
                     break;
                 case 3:
                     // TODO: kinda stubbed, implement naming stuff and shit
+                    saveTempPath = malloc(MAXSIZE * sizeof(char*));
+                    
+                    memset(saveTempPath, 0, MAXSIZE * sizeof(char*));
                     memset(strIndex, 0, MAXSIZE * sizeof(char*));
-                    snprintf(strIndex, MAXSIZE, "/3ds/data/Haxelektor/%s/config/program-generated.json", currentTid);
+                    
+                    swkbdInit(&kbd, SWKBD_TYPE_NORMAL, 2, 255);
+                    swkbdSetButton(&kbd, SWKBD_BUTTON_LEFT, "Cancel", false);
+                    swkbdSetButton(&kbd, SWKBD_BUTTON_RIGHT, "Save", true);
+                    swkbdSetHintText(&kbd, "Enter a name for your config file.");
+                    
+                    btn = SWKBD_BUTTON_NONE;
+                    while (btn == SWKBD_BUTTON_NONE)
+                        btn = swkbdInputText(&kbd, saveTempPath, MAXSIZE);
+                    
+                    snprintf(strIndex, MAXSIZE, "/3ds/data/Haxelektor/%s/config/%s", currentTid, saveTempPath);
+                    
                     int result = jsonSave(strIndex, modCount, modListing, modSelected);
-                    if (result == -1)
+                    if (result == -1) {
                         uiError("Saving configuration failed.");
-                    else
+                        break;
+                    } else
                         uiError("Configuration successfully saved.");
+                    
+                    memset(strIndex, 0, MAXSIZE * sizeof(char*));
+                    snprintf(strIndex, MAXSIZE, "/3ds/data/Haxelektor/%s/config/", currentTid);
+                    configListing = listAllFiles(strIndex, &configCount, 0);
                     break;
                 case 4:
                     if (selectConfig != 0)
                         break;
+                    
+                    if (configCount == 0)
+                        uiError("There are no existing configs for this title.");
+                    
                     selectConfig = !selectConfig;
                     listing = configListing;
                     lCount = configCount;
