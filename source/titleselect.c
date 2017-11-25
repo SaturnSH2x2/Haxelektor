@@ -80,7 +80,7 @@ int getSMDHData(u64 tid, u8 mediaType, int index) {
     return 0;
 }
 
-u32 selectTitle() {
+char* selectTitle() {
     uiError("Stubbed.  Proceed to mod selection screen.");
-    return 0x0004000000175E00;
+    return "00040000000EDF00";
 }

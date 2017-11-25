@@ -38,4 +38,6 @@ typedef struct {
     u16 bigIconData[0x900];
 } smdhStruct;
 
+char* selectTitle();
+
 #endif
