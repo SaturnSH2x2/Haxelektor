@@ -16,7 +16,7 @@
 #define GREY2FG RGBA8(80,   80,  80, 255)
 #define DGREY   RGBA8( 50,  50,  50, 255)
 
-#define MAXSIZE 255
+#define MAXSIZE 10000
 #define NUMBTNS 10
 
 // ------------------------------------------------------
@@ -69,6 +69,9 @@ void stall() {
 }
 
 void loadFromFile(char* desc) {
+    if (entryIndex >= modCount || entryIndex < 0)
+        return;
+    
     char* path = malloc(MAXSIZE * sizeof(char*));
     
     snprintf(path, MAXSIZE, "/3ds/data/Haxelektor/%s/mods/%s/description.txt", currentTid, modListing[entryIndex]);
@@ -242,7 +245,7 @@ void uiInit(char* tid) {
     memset(path, 0, MAXSIZE * sizeof(char*));
     snprintf(path, MAXSIZE, "/3ds/data/Haxelektor/%s/config/", tid);
     
-    mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    mkdir(path, 0777);
     configListing = listAllFiles(path, &configCount, 0);
     
     // set TID
@@ -300,7 +303,7 @@ void uiLoading() {
         pp2d_draw_rectangle(0, 0, 400, 15, GREYFG);
         pp2d_draw_rectangle(0, 220, 400, 20, GREYFG);
         
-        pp2d_draw_text_center(GFX_TOP, 100, 0.5f, 0.5f, WHITE, "Please wait.");
+        pp2d_draw_text_center(GFX_TOP, 100, 0.5f, 0.5f, WHITE, "Please wait. This may take a while.");
     pp2d_end_draw();
     
     pp2d_begin_draw(GFX_BOTTOM);
@@ -391,6 +394,7 @@ LOOP_RETURN uiModSelectLoop() {
                     else {
                         entryIndex = entryIndex - 13;
                         indexPos = indexPos - 13;   
+                        max = (indexPos + 13 < lCount) ? indexPos + 13 : lCount;
                     }
                     break;
                 case KEY_DRIGHT:
@@ -402,6 +406,7 @@ LOOP_RETURN uiModSelectLoop() {
                             entryIndex = lCount - 1;
                         }
                         indexPos = indexPos + 13;
+                        max = (indexPos + 13 < lCount) ? indexPos + 13 : lCount;
                     }
                     break;
                 case KEY_A:
@@ -434,6 +439,7 @@ LOOP_RETURN uiModSelectLoop() {
                         kDown = 0;
                         listing = modListing;
                         lCount = modCount;
+                        max = (indexPos + 13 < lCount) ? indexPos + 13 : lCount;
                     }
                     break;
                 default:
@@ -443,10 +449,12 @@ LOOP_RETURN uiModSelectLoop() {
             if (entryIndex >= lCount) {
                 entryIndex = 0;
                 indexPos = 0;
+                max = (indexPos + 13 < lCount) ? indexPos + 13 : lCount;
                 loadFromFile(desc);
             } else if (entryIndex < 0) {
                 entryIndex = lCount - 1;
                 indexPos = ((int)ceil((float)lCount / 13.0) - 1) * 13;
+                max = (indexPos + 13 < lCount) ? indexPos + 13 : lCount;
                 loadFromFile(desc);
             }
         } else if (cursorPos == 1) {
@@ -510,18 +518,18 @@ LOOP_RETURN uiModSelectLoop() {
                      
                     // create paths as necessary
                     if (isSaltySD == 0) {
-                        mkdir("/luma", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-                        mkdir("/luma/titles", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+                        mkdir("/luma", 0777);
+                        mkdir("/luma/titles", 0777);
                         
                         memset(temp, 0, MAXSIZE * sizeof(char*));
                         snprintf(temp, MAXSIZE, "/luma/titles/%s", currentTid);
-                        mkdir(temp, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+                        mkdir(temp, 0777);
                         
                         memset(temp, 0, MAXSIZE * sizeof(char*));
                         snprintf(temp, MAXSIZE, "/luma/titles/%s/romfs", currentTid);
-                        mkdir(temp, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+                        mkdir(temp, 0777);
                     } else if (isSaltySD == 1 || isSaltySD == 2) {
-                        mkdir("/saltysd", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+                        mkdir("/saltysd", 0777);
                     } 
                     
                     memset(temp, 0, MAXSIZE * sizeof(char*));
@@ -534,21 +542,28 @@ LOOP_RETURN uiModSelectLoop() {
                     }
 
                     // delete old unnecessary mod folders, if they exist
-                    removeDir(temp);
+                    int remove = 0;
+                    while (remove != 0)
+                        remove = removeDir(temp);
                     
                     for (int i = modCount - 1; i >= 0; i--) {
+                        applyPatchRetry:
                         if (modSelected[i] == 0)
                             continue;
                         
                         memset(strIndex, 0, MAXSIZE * sizeof(char*));
                         snprintf(strIndex, MAXSIZE, "/3ds/data/Haxelektor/%s/mods/%s/mod",currentTid, modListing[i]);
-                        copyDir(strIndex, temp);
+                        if (copyDir(strIndex, temp) != 0)  {
+                            uiError("Patch application failed. Retrying...");
+                            goto applyPatchRetry;
+                        }
                     }
                         
-                    free(temp);
+                    //free(temp);
                     uiError("Patches for this game have been applied.");
                     break;
                 case 2:
+                    removePatchRetry:    // pretty hacky, I know
                     if (selectConfig != 0)
                         break;
                     memset(strIndex, 0, MAXSIZE * sizeof(char*));
@@ -559,11 +574,12 @@ LOOP_RETURN uiModSelectLoop() {
                     else if (isSaltySD == 2)
                         snprintf(strIndex, MAXSIZE, "saltysd/SunMoon");
                     
-                    removeDir(strIndex);
-                    uiError("All patches for this game have been removed.");
+                    if (removeDir(strIndex) != 0)
+                        goto removePatchRetry;
+                    else
+                        uiError("All patches for this game have been removed.");
                     break;
                 case 3:
-                    // TODO: kinda stubbed, implement naming stuff and shit
                     saveTempPath = malloc(MAXSIZE * sizeof(char*));
                     
                     memset(saveTempPath, 0, MAXSIZE * sizeof(char*));
@@ -595,8 +611,10 @@ LOOP_RETURN uiModSelectLoop() {
                     if (selectConfig != 0)
                         break;
                     
-                    if (configCount == 0)
+                    if (configCount == 0) {
                         uiError("There are no existing configs for this title.");
+                        break;
+                    }
                     
                     selectConfig = !selectConfig;
                     listing = configListing;
@@ -616,6 +634,7 @@ LOOP_RETURN uiModSelectLoop() {
                     if (selectConfig != 0)
                         break;
                     entryIndex = entryIndex - 13;
+                    max = (indexPos + 13 < lCount) ? indexPos + 13 : lCount;
                     indexPos = indexPos - 13;
                     if (entryIndex > 0)
                         loadFromFile(desc);
@@ -624,8 +643,10 @@ LOOP_RETURN uiModSelectLoop() {
                     if (selectConfig != 0)
                         break;
                     entryIndex = entryIndex + 13;
+                    max = (indexPos + 13 < lCount) ? indexPos + 13 : lCount;
                     if ((entryIndex >= modCount) && indexPos != ((int)ceil((float)modCount / 13.0) - 1) * 13) {
                         entryIndex = modCount - 1;
+                        max = (indexPos + 13 < lCount) ? indexPos + 13 : lCount;
                     }
                     indexPos = indexPos + 13;
                     if (entryIndex < modCount)
@@ -663,6 +684,8 @@ LOOP_RETURN uiModSelectLoop() {
                         else if (selectConfig != 0 && entryIndex == prevEntryIndex)
                             goto loadConfig;
                         
+                        max = (indexPos + 13 < lCount) ? indexPos + 13 : lCount;
+                        
                         
                         if (cursorPos != 0)
                             cursorPos = !cursorPos;
@@ -683,10 +706,13 @@ LOOP_RETURN uiModSelectLoop() {
         if (indexPos >= lCount) {
             entryIndex = 0;
             indexPos = 0;
+            max = (indexPos + 13 < lCount) ? indexPos + 13 : lCount;
             loadFromFile(desc);
         } else if (indexPos < 0) {
-            indexPos = ((int)ceil((float)lCount / 13.0) - 1) * 13;
+            if (selectConfig == 0)
+                indexPos = ((int)ceil((float)modCount / 13.0) - 1) * 13;
             entryIndex = indexPos;
+            max = (indexPos + 13 < lCount) ? indexPos + 13 : lCount;
             loadFromFile(desc);
         }
 
@@ -696,6 +722,7 @@ LOOP_RETURN uiModSelectLoop() {
             buttonIndex = NUMBTNS - 1;            
         
         // display to screen
+        max = (indexPos + 13 < lCount) ? indexPos + 13 : lCount;
         pp2d_begin_draw(GFX_TOP);
             pp2d_draw_rectangle(0, 0, 400, 240, GREYFG);
             if (selectConfig == 0) {
@@ -736,6 +763,12 @@ LOOP_RETURN uiModSelectLoop() {
                 snprintf(strIndex, MAXSIZE, "Select a config file.");
             
             pp2d_draw_text(0, 0, 0.5f, 0.5f, WHITE, strIndex);
+            
+            /*
+            memset(strIndex, 0, MAXSIZE * sizeof(char*));
+            snprintf(strIndex, MAXSIZE, "Index: %i", entryIndex);
+            pp2d_draw_text(0, 220, 0.5f, 0.5f, WHITE, strIndex);
+            */
             
             // draw all the side buttons
             if (selectConfig == 0)

@@ -8,8 +8,9 @@
 #include <3ds.h>
 
 #include "filestuff.h"
+#include "ui.h"
 
-#define MAXDIRSIZE 500
+#define MAXDIRSIZE 10000
 
 // TODO: add code.bin/code.ips support
 bool isAMod(const char* path) {
@@ -87,10 +88,24 @@ char** listAllFiles(const char* path, u16* entryC, int listOnlyMods) {
 
 int copyFile(const char* src, const char* dst) {
     int buf;
+    char* createDirBuf;
+    FILE* s;
+    FILE* d;
     
-    FILE* s = fopen(src, "rb");
-    FILE* d = fopen(dst, "wb+");
+    copyFileRetry:
+    s = fopen(src, "rb");
+    d = fopen(dst, "wb");
     if (s == NULL || d == NULL) {
+        createDirBuf = malloc(MAXDIRSIZE * sizeof(char*));
+        for (int i = (sizeof(dst) / sizeof(char*)) - 1; i > 0; i--) {
+            uiError("preparing to rename directory");
+            if (dst[i] == '/') {
+                snprintf(createDirBuf, i, "%s", dst);
+                mkdir(createDirBuf, 0777);
+                uiError("went back, created directory, retrying");
+                goto copyFileRetry;
+            }
+        }
         printf("source: %s, dest: %s\n", src, dst);
         return -1;
     }
@@ -108,17 +123,21 @@ int copyFile(const char* src, const char* dst) {
 int copyDir(const char* src, const char* dst) {
     // first off, does it exist and is it a directory?
     DIR* curdir = opendir(src);
-    if (curdir == NULL)
+    if (curdir == NULL) {
+        //uiError("source directory does not exist");
+        //uiError(src);
         return -1;
-
+    }
+        
     // check to see that the destination directory exists,
     // if it doesn't, create it
     DIR* dstdir = opendir(dst);
     if (dstdir == NULL) {
         // https://stackoverflow.com/a/675051
-        int result = mkdir(dst, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        int result = mkdir(dst, 0777);
         if (result == -1) {
-            fprintf(stderr, "error: could not create %s\n", dst);
+            //uiError("failed to create directory");
+            //uiError(dst);
             return -1;
         }
     } else {
@@ -143,7 +162,9 @@ int copyDir(const char* src, const char* dst) {
         // yay, recursion, end me
         if (copyDir(srcSubPath, dstSubPath) == -1) {  // it's a file, we need to copy it as such
             if (copyFile(srcSubPath, dstSubPath) == -1) {
-                fprintf(stderr, "error: could not copy %s\n", entry->d_name);
+                //uiError("failed to copy file");
+                //uiError(srcSubPath);
+                //uiError(entry->d_name);
                 return -1;
             }
         }
@@ -170,10 +191,11 @@ int removeDir(char* path) {
         memset(strPath, 0, MAXDIRSIZE * sizeof(char*));
         snprintf(strPath, MAXDIRSIZE, "%s/%s", path, entry->d_name);
         
-        if (unlink(strPath) != 0) {
+        if (remove(strPath) != 0) {
             removeDir(strPath);
-            if (unlink(strPath) != 0)
+            if (rmdir(strPath) != 0) {
                 return -1;
+            }
         }
     }
     
