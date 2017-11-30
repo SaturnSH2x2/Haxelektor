@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <errno.h>
 #include <3ds.h>
 
 #include <sys/stat.h>
@@ -547,15 +548,18 @@ LOOP_RETURN uiModSelectLoop() {
                         remove = removeDir(temp);
                     
                     for (int i = modCount - 1; i >= 0; i--) {
-                        applyPatchRetry:
                         if (modSelected[i] == 0)
                             continue;
                         
                         memset(strIndex, 0, MAXSIZE * sizeof(char*));
                         snprintf(strIndex, MAXSIZE, "/3ds/data/Haxelektor/%s/mods/%s/mod",currentTid, modListing[i]);
                         if (copyDir(strIndex, temp) != 0)  {
-                            uiError("Patch application failed. Retrying...");
-                            goto applyPatchRetry;
+                            while (aptMainLoop()) {
+                                hidScanInput();
+                                if (hidKeysDown())
+                                    break;
+                            }
+                            goto uiEnd;
                         }
                     }
                         
@@ -563,6 +567,7 @@ LOOP_RETURN uiModSelectLoop() {
                     uiError("Patches for this game have been applied.");
                     break;
                 case 2:
+                    uiLoading();
                     removePatchRetry:    // pretty hacky, I know
                     if (selectConfig != 0)
                         break;
@@ -778,6 +783,7 @@ LOOP_RETURN uiModSelectLoop() {
         pp2d_end_draw();
     }
     
+    uiEnd:
     listing = NULL;
     free(strIndex);
     return GO_BACK;

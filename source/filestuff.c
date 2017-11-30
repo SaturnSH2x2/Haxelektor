@@ -10,7 +10,7 @@
 #include "filestuff.h"
 #include "ui.h"
 
-#define MAXDIRSIZE 10000
+#define MAXDIRSIZE 500
 
 // TODO: add code.bin/code.ips support
 bool isAMod(const char* path) {
@@ -88,24 +88,14 @@ char** listAllFiles(const char* path, u16* entryC, int listOnlyMods) {
 
 int copyFile(const char* src, const char* dst) {
     int buf;
-    char* createDirBuf;
     FILE* s;
     FILE* d;
     
-    copyFileRetry:
     s = fopen(src, "rb");
-    d = fopen(dst, "wb");
+    d = fopen(dst, "w+");
     if (s == NULL || d == NULL) {
-        createDirBuf = malloc(MAXDIRSIZE * sizeof(char*));
-        for (int i = (sizeof(dst) / sizeof(char*)) - 1; i > 0; i--) {
-            uiError("preparing to rename directory");
-            if (dst[i] == '/') {
-                snprintf(createDirBuf, i, "%s", dst);
-                mkdir(createDirBuf, 0777);
-                uiError("went back, created directory, retrying");
-                goto copyFileRetry;
-            }
-        }
+        consoleInit(GFX_BOTTOM, NULL);
+        perror("error: ");
         printf("source: %s, dest: %s\n", src, dst);
         return -1;
     }
@@ -124,8 +114,6 @@ int copyDir(const char* src, const char* dst) {
     // first off, does it exist and is it a directory?
     DIR* curdir = opendir(src);
     if (curdir == NULL) {
-        //uiError("source directory does not exist");
-        //uiError(src);
         return -1;
     }
         
@@ -133,13 +121,9 @@ int copyDir(const char* src, const char* dst) {
     // if it doesn't, create it
     DIR* dstdir = opendir(dst);
     if (dstdir == NULL) {
-        // https://stackoverflow.com/a/675051
-        int result = mkdir(dst, 0777);
-        if (result == -1) {
-            //uiError("failed to create directory");
-            //uiError(dst);
-            return -1;
-        }
+        // I pray this won't hang
+        while (mkdir(dst, 0777) != 0)
+            continue;
     } else {
         closedir(dstdir);
     }
@@ -173,6 +157,8 @@ int copyDir(const char* src, const char* dst) {
     free(srcSubPath);
     free(dstSubPath);
 
+    closedir(curdir);
+    
     return 0;
 }
 
