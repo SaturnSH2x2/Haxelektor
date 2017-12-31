@@ -6,11 +6,12 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <3ds.h>
+#include <errno.h>
 
 #include "filestuff.h"
 #include "ui.h"
 
-#define MAXDIRSIZE 500
+#define MAXDIRSIZE 300
 
 // TODO: add code.bin/code.ips support
 bool isAMod(const char* path) {
@@ -25,6 +26,7 @@ bool isAMod(const char* path) {
         snprintf(subpath, MAXDIRSIZE, "%s/%s", path, entry->d_name);
         if ((contentFolder = opendir(subpath)) != NULL) { 
             closedir(contentFolder);
+            contentFolder = NULL;
             if (strncmp(entry->d_name, "mod", sizeof(entry->d_name)) == 0)
                 return true;
         }
@@ -91,18 +93,18 @@ int copyFile(const char* src, const char* dst) {
     FILE* s;
     FILE* d;
     
+    consoleInit(GFX_BOTTOM, NULL);
     s = fopen(src, "rb");
     d = fopen(dst, "w+");
     if (s == NULL || d == NULL) {
-        consoleInit(GFX_BOTTOM, NULL);
-        perror("error: ");
-        printf("source: %s, dest: %s\n", src, dst);
         return -1;
     }
     
-    while ((buf = fgetc(s)) != EOF) {
+    buf = fgetc(s);
+    do {
         fputc(buf, d);
-    }
+        buf = fgetc(s);
+    } while (buf != EOF);
     
     fclose(s);
     fclose(d);
@@ -112,8 +114,10 @@ int copyFile(const char* src, const char* dst) {
 
 int copyDir(const char* src, const char* dst) {
     // first off, does it exist and is it a directory?
+    consoleInit(GFX_BOTTOM, NULL);
     DIR* curdir = opendir(src);
     if (curdir == NULL) {
+        printf("error: 0x%x\n", errno);
         return -1;
     }
         
@@ -121,20 +125,17 @@ int copyDir(const char* src, const char* dst) {
     // if it doesn't, create it
     DIR* dstdir = opendir(dst);
     if (dstdir == NULL) {
-        // I pray this won't hang
-        while (mkdir(dst, 0777) != 0)
-            continue;
+        mkdir(dst, 0777);
     } else {
         closedir(dstdir);
     }
 
     struct dirent* entry;
-    char* srcSubPath = malloc(MAXDIRSIZE);
-    char* dstSubPath = malloc(MAXDIRSIZE);
+    char* srcSubPath = malloc(MAXDIRSIZE * sizeof(char*));
+    char* dstSubPath = malloc(MAXDIRSIZE * sizeof(char*));
 
     while ( (entry = readdir(curdir)) != NULL ) {
         // copy the names
-        // while, yes, there is a possiblility that this can get truncated 
         snprintf(srcSubPath, MAXDIRSIZE, "%s/%s", src, entry->d_name);
         snprintf(dstSubPath, MAXDIRSIZE, "%s/%s", dst, entry->d_name);
 
@@ -146,9 +147,6 @@ int copyDir(const char* src, const char* dst) {
         // yay, recursion, end me
         if (copyDir(srcSubPath, dstSubPath) == -1) {  // it's a file, we need to copy it as such
             if (copyFile(srcSubPath, dstSubPath) == -1) {
-                //uiError("failed to copy file");
-                //uiError(srcSubPath);
-                //uiError(entry->d_name);
                 return -1;
             }
         }

@@ -17,7 +17,7 @@
 #define GREY2FG RGBA8(80,   80,  80, 255)
 #define DGREY   RGBA8( 50,  50,  50, 255)
 
-#define MAXSIZE 10000
+#define MAXSIZE 300
 #define NUMBTNS 10
 
 // ------------------------------------------------------
@@ -75,7 +75,7 @@ void loadFromFile(char* desc) {
     
     char* path = malloc(MAXSIZE * sizeof(char*));
     
-    snprintf(path, MAXSIZE, "/3ds/data/Haxelektor/%s/mods/%s/description.txt", currentTid, modListing[entryIndex]);
+    snprintf(path, MAXSIZE, "sdmc:/3ds/data/Haxelektor/%s/mods/%s/description.txt", currentTid, modListing[entryIndex]);
     FILE* fp = fopen(path, "r");
     if (fp == NULL) {
         snprintf(desc, MAXSIZE, "No description provided.");
@@ -226,7 +226,7 @@ void uiInit(char* tid) {
     // create and fill mod list
     char* path = malloc(MAXSIZE * sizeof(char*));
     memset(path, 0, MAXSIZE * sizeof(char*));
-    snprintf(path, MAXSIZE, "/3ds/data/Haxelektor/%s/mods", tid);
+    snprintf(path, MAXSIZE, "sdmc:/3ds/data/Haxelektor/%s/mods", tid);
     
     modListing = listAllFiles(path, &modCount, 1);
     modSelected = malloc(modCount * sizeof(u8*));
@@ -244,7 +244,7 @@ void uiInit(char* tid) {
     
     // create and fill config list
     memset(path, 0, MAXSIZE * sizeof(char*));
-    snprintf(path, MAXSIZE, "/3ds/data/Haxelektor/%s/config/", tid);
+    snprintf(path, MAXSIZE, "sdmc:/3ds/data/Haxelektor/%s/config/", tid);
     
     mkdir(path, 0777);
     configListing = listAllFiles(path, &configCount, 0);
@@ -299,12 +299,12 @@ int uiPrompt(const char* prompt) {
     return result;
 }
 
-void uiLoading() {
+void uiLoading(char* msg) {
     pp2d_begin_draw(GFX_TOP);
         pp2d_draw_rectangle(0, 0, 400, 15, GREYFG);
         pp2d_draw_rectangle(0, 220, 400, 20, GREYFG);
         
-        pp2d_draw_text_center(GFX_TOP, 100, 0.5f, 0.5f, WHITE, "Please wait. This may take a while.");
+        pp2d_draw_text_center(GFX_TOP, 100, 0.5f, 0.5f, WHITE, msg);
     pp2d_end_draw();
     
     pp2d_begin_draw(GFX_BOTTOM);
@@ -417,7 +417,7 @@ LOOP_RETURN uiModSelectLoop() {
                     else {
                         // load configuration
                         memset(strIndex, 0, MAXSIZE * sizeof(char*));
-                        snprintf(strIndex, MAXSIZE, "/3ds/data/Haxelektor/%s/config/%s", currentTid, listing[entryIndex]);
+                        snprintf(strIndex, MAXSIZE, "sdmc:/3ds/data/Haxelektor/%s/config/%s", currentTid, listing[entryIndex]);
                         int result = jsonLoad(strIndex, modCount, modListing, modSelected);
  
 
@@ -514,7 +514,7 @@ LOOP_RETURN uiModSelectLoop() {
                 case 1:
                     if (selectConfig != 0)
                         break;
-                    uiLoading();
+                    uiLoading("Applying patches, please wait.");
                     char* temp = malloc(MAXSIZE * sizeof(char*));
                      
                     // create paths as necessary
@@ -551,14 +551,12 @@ LOOP_RETURN uiModSelectLoop() {
                         if (modSelected[i] == 0)
                             continue;
                         
+                        uiLoading(modListing[i]);
+                        
                         memset(strIndex, 0, MAXSIZE * sizeof(char*));
-                        snprintf(strIndex, MAXSIZE, "/3ds/data/Haxelektor/%s/mods/%s/mod",currentTid, modListing[i]);
+                        snprintf(strIndex, MAXSIZE, "sdmc:/3ds/data/Haxelektor/%s/mods/%s/mod",currentTid, modListing[i]);
                         if (copyDir(strIndex, temp) != 0)  {
-                            while (aptMainLoop()) {
-                                hidScanInput();
-                                if (hidKeysDown())
-                                    break;
-                            }
+                            uiError("copying a directory failed.");
                             goto uiEnd;
                         }
                     }
@@ -567,7 +565,7 @@ LOOP_RETURN uiModSelectLoop() {
                     uiError("Patches for this game have been applied.");
                     break;
                 case 2:
-                    uiLoading();
+                    uiLoading("Removing patches, please wait.");
                     removePatchRetry:    // pretty hacky, I know
                     if (selectConfig != 0)
                         break;
@@ -599,7 +597,7 @@ LOOP_RETURN uiModSelectLoop() {
                     while (btn == SWKBD_BUTTON_NONE)
                         btn = swkbdInputText(&kbd, saveTempPath, MAXSIZE);
                     
-                    snprintf(strIndex, MAXSIZE, "/3ds/data/Haxelektor/%s/config/%s", currentTid, saveTempPath);
+                    snprintf(strIndex, MAXSIZE, "sdmc:/3ds/data/Haxelektor/%s/config/%s", currentTid, saveTempPath);
                     
                     int result = jsonSave(strIndex, modCount, modListing, modSelected);
                     if (result == -1) {
@@ -609,7 +607,7 @@ LOOP_RETURN uiModSelectLoop() {
                         uiError("Configuration successfully saved.");
                     
                     memset(strIndex, 0, MAXSIZE * sizeof(char*));
-                    snprintf(strIndex, MAXSIZE, "/3ds/data/Haxelektor/%s/config/", currentTid);
+                    snprintf(strIndex, MAXSIZE, "sdmc:/3ds/data/Haxelektor/%s/config/", currentTid);
                     configListing = listAllFiles(strIndex, &configCount, 0);
                     break;
                 case 4:
